@@ -1,0 +1,64 @@
+[
+
+{
+
+"@score":"2",
+
+"@id":"6843263",
+
+"info":{"authors":{"author":{"@pid":"74/7013","text":"Richard A. Gustafson"}},"title":"Elements of the Randomized Combinatorial File Structure.","venue":"SIGIR","pages":"163-174","year":"1971","type":"Conference and Workshop Papers","access":"closed","key":"conf/sigir/Gustafson71","doi":"10.1145/511285.511304","ee":"https://doi.org/10.1145/511285.511304","url":"https://dblp.org/rec/conf/sigir/Gustafson71"},
+
+"url":"URL#6843263"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"6843264",
+
+"info":{"authors":{"author":[{"@pid":"20/5936","text":"Earl B. Hunt"},{"@pid":"83/4928","text":"Gary A. Kildall"}]},"title":"A Heathkit Method for Building Data Management Programs.","venue":"SIGIR","pages":"117-131","year":"1971","type":"Conference and Workshop Papers","access":"closed","key":"conf/sigir/HuntK71","doi":"10.1145/511285.511299","ee":"https://doi.org/10.1145/511285.511299","url":"https://dblp.org/rec/conf/sigir/HuntK71"},
+
+"url":"URL#6843264"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"6843265",
+
+"info":{"authors":{"author":{"@pid":"57/4887-1","text":"David M. Jackson 0001"}},"title":"Optimal Classification and Its Consequences.","venue":"SIGIR","pages":"217-224","year":"1971","type":"Conference and Workshop Papers","access":"closed","key":"conf/sigir/Jackson71","doi":"10.1145/511285.511309","ee":"https://doi.org/10.1145/511285.511309","url":"https://dblp.org/rec/conf/sigir/Jackson71"},
+
+"url":"URL#6843265"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"6843266",
+
+"info":{"authors":{"author":{"@pid":"55/6066","text":"A. M. Katcher"}},"title":"Efficient Utilization of Limited Access Archival Storage in a Time Shared Environment.","venue":"SIGIR","pages":"197-205","year":"1971","type":"Conference and Workshop Papers","access":"closed","key":"conf/sigir/Katcher71","doi":"10.1145/511285.511307","ee":"https://doi.org/10.1145/511285.511307","url":"https://dblp.org/rec/conf/sigir/Katcher71"},
+
+"url":"URL#6843266"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"6843267",
+
+"info":{"authors":{"author":[{"@pid":"52/1366","text":"Charles Kellogg"},{"@pid":"82/1063","text":"John D. Burger"},{"@pid":"00/6669","text":"Timothy Diller"},{"@pid":"85/6310","text":"Kenneth Fogt"}]},"title":"The Converse Natural Language Data Management System: Current Status and Plans.","venue":"SIGIR","pages":"33-46","year":"1971","type":"Conference and Workshop Papers","access":"closed","key":"conf/sigir/KelloggBDF71","doi":"10.1145/511285.511290","ee":"https://doi.org/10.1145/511285.511290","url":"https://dblp.org/rec/conf/sigir/KelloggBDF71"},
+
+"url":"URL#6843267"
+
+}
+
+]
+
