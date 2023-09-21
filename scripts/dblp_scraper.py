@@ -14,6 +14,8 @@ class DBLPscraper:
     def scrape_conference(self, conference, year = None):
         """
         Scrape all papers published at a given conference (and in a given year).
+
+        Calls to API require minimum of 3 second courtesy delay to avoid ERROR 429.
         
         Args:
             conference: Name of the conference for which entries shall be scraped.
@@ -110,12 +112,24 @@ class DBLPscraper:
                           "}" + self.bibtex_padding])
 
     def _get_bibkey_from_entry(self, entry):
-        return (entry["info"]["venue"].lower() + "-" +
-                entry["info"]["authors"]["author"][0]["text"].split(" ")[-1].lower() + "-" +
-                entry["info"]["year"])
+        def get_last_name_of_first_author(list_or_dict):
+            if type(list_or_dict) == list:
+                first_author = list_or_dict[0]["text"]
+            if type(list_or_dict) == dict:
+                first_author = list_or_dict["text"]
+            return ("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().split(" ")[-1]
+        return (entry["info"].get("venue", "novenue").lower() + "-" +
+                entry["info"]["year"] + "-" +
+                get_last_name_of_first_author(entry["info"].get("authors", {"author":{"@pid":"nopersonids","text":"noauthorname"}})["author"]).lower())
 
     def _get_personids_string_from_entry(self, entry):
-        return " and ".join([author["@pid"] for author in entry["info"]["authors"]["author"]])
+        def get_pids_of_authors(list_or_dict):
+            if type(list_or_dict) == list:
+                return [author["@pid"] for author in list_or_dict]
+            if type(list_or_dict) == dict:
+                return [list_or_dict["@pid"]]
+        return " and ".join(get_pids_of_authors(
+            entry["info"].get("authors", {"author":{"@pid":"nopersonids","text":"noauthorname"}})["author"]))
 
     def _get_sourceid_from_bibtex_line(self, bibtex_line):
         return bibtex_line[bibtex_line.find("{")+1:-1]

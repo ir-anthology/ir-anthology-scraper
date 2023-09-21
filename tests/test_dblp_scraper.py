@@ -11,8 +11,12 @@ class TestDBLPscraper(unittest.TestCase):
         cls.scraped_entries = []
         cls.scraper = DBLPscraper()
         cls.scraper.logger = lambda x: x
-        with open("tests/resources/hits_dblp_api_sigir_1971.json") as file:
-            cls.hits_dblp_api_sigir_1971 = load(file)
+        with open("tests/resources/sigir_1971_dblp.json") as file:
+            cls.sigir_1971_dblp_json = load(file)
+        with open("tests/resources/sigir_1971_dblp.bib") as file:
+            cls.sigir_1971_dblp_bibtex = "".join(file.readlines()).split("\n\n\n\n")
+        with open("tests/resources/sigir_1971_ir_anthology.bib") as file:
+            cls.sigir_1971_ir_anthology_bibtex = "".join(file.readlines())
         with open("tests/resources/PotthastGBBBFKN21_dblp.json") as file:
             cls.PotthastGBBBFKN21_dblp_json = load(file)
         with open("tests/resources/PotthastGBBBFKN21_dblp.bib") as file:
@@ -21,16 +25,16 @@ class TestDBLPscraper(unittest.TestCase):
             cls.PotthastGBBBFKN21_ir_anthology_bibtex = "".join(file.readlines())
 
     def test_scrape_conference(self):
-        self.skipTest("TO DO (FIX ME)")
+        self.skipTest("TO DO - FIX ME - HANDLE NEW ENTRIES")
 
     def test_scrape_conference_with_year(self):
         entries_sigir_1971 = self.scraper.scrape_conference("sigir", 1971)
         self.assertEqual([entry["info"] for entry in entries_sigir_1971],
-                         [entry["info"] for entry in self.hits_dblp_api_sigir_1971])
+                         [entry["info"] for entry in self.sigir_1971_dblp_json])
 
         entries_sigir_1975 = self.scraper.scrape_conference("sigir", 1975)
         self.assertEqual([entry["info"] for entry in entries_sigir_1975],
-                         [])
+                         [])        
 
     def test_scrape_conference_batch(self):
         year = 1971
@@ -41,7 +45,7 @@ class TestDBLPscraper(unittest.TestCase):
                    "f": "3"}
         entry_batch = self.scraper._scrape_conference_batch(payload)
         self.assertEqual([entry["info"] for entry in entry_batch],
-                         [entry["info"] for entry in self.hits_dblp_api_sigir_1971[3:8]])
+                         [entry["info"] for entry in self.sigir_1971_dblp_json[3:8]])
 
     def test_strats(self):
         mocked_entries = [{"info":{"year":"2000"}},
@@ -76,13 +80,18 @@ class TestDBLPscraper(unittest.TestCase):
 
     def test_get_bibkey_from_entry(self):
         self.assertEqual(self.scraper._get_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json),
-                         "sigir-potthast-2021")
-    
+                         "sigir-2021-potthast")
 
     def test_get_sourceid_from_bibtex_line(self):
         bibtex_line = "@inproceedings{DBLP:conf/sigir/PotthastGBBBFKN21,"
         self.assertEqual(self.scraper._get_sourceid_from_bibtex_line(bibtex_line), "DBLP:conf/sigir/PotthastGBBBFKN21")
 
+    def test_generate_bibtex_string_of_conference_and_year(self):
+        
+        generated_bibtex_string = "".join([self.scraper.amend_bibtex(entry, bibtex)
+                                           for entry,bibtex in zip(self.sigir_1971_dblp_json,
+                                                                   self.sigir_1971_dblp_bibtex)])
+        self.assertEqual(generated_bibtex_string, self.sigir_1971_ir_anthology_bibtex)
 
 if __name__ == "__main__":
     unittest.main()
