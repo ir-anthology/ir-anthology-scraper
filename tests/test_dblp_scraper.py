@@ -13,13 +13,15 @@ class TestDBLPscraper(unittest.TestCase):
         cls.scraper.logger = lambda x: x
         with open("tests/resources/hits_dblp_api_sigir_1971.json") as file:
             cls.hits_dblp_api_sigir_1971 = load(file)
-        with open("tests/resources/PotthastGBBBFKN21.json") as file:
-            cls.entry_PotthastGBBBFKN21 = load(file)
-        with open("tests/resources/PotthastGBBBFKN21.bib") as file:
-            cls.bibtex_PotthastGBBBFKN21 = "".join(file.readlines())
+        with open("tests/resources/PotthastGBBBFKN21_dblp.json") as file:
+            cls.PotthastGBBBFKN21_dblp_json = load(file)
+        with open("tests/resources/PotthastGBBBFKN21_dblp.bib") as file:
+            cls.PotthastGBBBFKN21_dblp_bibtex = "".join(file.readlines())
+        with open("tests/resources/PotthastGBBBFKN21_ir_anthology.bib") as file:
+            cls.PotthastGBBBFKN21_ir_anthology_bibtex = "".join(file.readlines())
 
     def test_scrape_conference(self):
-        print("\n\n >>> TO DO - FIX ME <<<\n")
+        self.skipTest("TO DO (FIX ME)")
 
     def test_scrape_conference_with_year(self):
         entries_sigir_1971 = self.scraper.scrape_conference("sigir", 1971)
@@ -51,8 +53,35 @@ class TestDBLPscraper(unittest.TestCase):
         self.assertEqual(stats, {"2000": 3, "2005": 1, "2010": 1})
 
     def test_scrape_bibtex(self):     
-        bibtex_string_scraped = self.scraper.scrape_bibtex(self.entry_PotthastGBBBFKN21)
-        self.assertEqual(bibtex_string_scraped, self.bibtex_PotthastGBBBFKN21 + "\n\n")
+        bibtex_string_scraped = self.scraper.scrape_bibtex(self.PotthastGBBBFKN21_dblp_json)
+        self.assertEqual(bibtex_string_scraped, self.PotthastGBBBFKN21_dblp_bibtex)
+
+    def test_amend_bibtex(self):
+        bibtex_string_edited = self.scraper.amend_bibtex(self.PotthastGBBBFKN21_dblp_json, self.PotthastGBBBFKN21_dblp_bibtex)
+        self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex)
+
+    def test_get_personids_string_from_entry(self):
+        self.assertEqual(self.scraper._get_personids_string_from_entry(self.PotthastGBBBFKN21_dblp_json),
+                         ("87/6573 and " +
+                          "67/6306-2 and " +
+                          "195/5852 and " +
+                          "262/5952 and " +
+                          "234/7521 and " +
+                          "256/9118 and " +
+                          "186/7380 and " +
+                          "118/5294 and " +
+                          "59/10289 and " +
+                          "69/4806-1 and " +
+                          "95/1130"))
+
+    def test_get_bibkey_from_entry(self):
+        self.assertEqual(self.scraper._get_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json),
+                         "sigir-potthast-2021")
+    
+
+    def test_get_sourceid_from_bibtex_line(self):
+        bibtex_line = "@inproceedings{DBLP:conf/sigir/PotthastGBBBFKN21,"
+        self.assertEqual(self.scraper._get_sourceid_from_bibtex_line(bibtex_line), "DBLP:conf/sigir/PotthastGBBBFKN21")
 
 
 if __name__ == "__main__":

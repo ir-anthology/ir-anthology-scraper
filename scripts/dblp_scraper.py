@@ -9,6 +9,7 @@ class DBLPscraper:
     def __init__(self):
         self.api_endpoint = "https://dblp.org/search/publ/api"
         self.logger = print
+        self.bibtex_padding = "\n\n\n"
 
     def scrape_conference(self, conference, year = None):
         """
@@ -94,7 +95,31 @@ class DBLPscraper:
         """
         url = entry["info"]["url"] + ".bib"
         response = self._get(url)
-        return response.text + "\n\n"
+        return response.text.strip() + self.bibtex_padding
+
+    def amend_bibtex(self, entry, bibtex):
+        bibtex_lines = bibtex.strip().split("\n")
+        first_bibtex_line = bibtex_lines[0]
+        bibkey = self._get_bibkey_from_entry(entry)
+        personids_string = self._get_personids_string_from_entry(entry)
+        sourceid = self._get_sourceid_from_bibtex_line(first_bibtex_line)
+        return "\n".join([first_bibtex_line[:first_bibtex_line.find("{")] +  "{" + bibkey + ","] +
+                         bibtex_lines[1:-2] + [bibtex_lines[-2] + ","] +
+                         ["  sourceid     = " + "{" + sourceid + "}" + ",",
+                          "  personids    = " + "{" + personids_string + "}",
+                          "}" + self.bibtex_padding])
+
+    def _get_bibkey_from_entry(self, entry):
+        return (entry["info"]["venue"].lower() + "-" +
+                entry["info"]["authors"]["author"][0]["text"].split(" ")[-1].lower() + "-" +
+                entry["info"]["year"])
+
+    def _get_personids_string_from_entry(self, entry):
+        return " and ".join([author["@pid"] for author in entry["info"]["authors"]["author"]])
+
+    def _get_sourceid_from_bibtex_line(self, bibtex_line):
+        return bibtex_line[bibtex_line.find("{")+1:-1]
+        
 
 if __name__ == "__main__":
     scraper = DBLPscraper()
