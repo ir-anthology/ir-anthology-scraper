@@ -99,6 +99,14 @@ class DBLPscraper:
 if __name__ == "__main__":
     scraper = DBLPscraper()
 
+
+    with open("../tests/resources/hits_dblp_api_sigir_1971_entry_3_to_7.json") as file:
+        entry_batch = json.load(file)
+
+    pprint(entry_batch)
+
+    input("CHECK")
+
     entries_sigir = scraper.scrape_conference("sigir")
 
     stats = scraper.stats(entries_sigir)

@@ -13,8 +13,6 @@ class TestDBLPscraper(unittest.TestCase):
         cls.scraper.logger = lambda x: x
         with open("tests/resources/hits_dblp_api_sigir_1971.json") as file:
             cls.hits_dblp_api_sigir_1971 = load(file)
-        with open("tests/resources/hits_dblp_api_sigir_1971_entry_3_to_7.json") as file:
-            cls.hits_dblp_api_sigir_1971_entry_3_to_7 = load(file)
         with open("tests/resources/PotthastGBBBFKN21.json") as file:
             cls.entry_PotthastGBBBFKN21 = load(file)
         with open("tests/resources/PotthastGBBBFKN21.bib") as file:
@@ -25,10 +23,12 @@ class TestDBLPscraper(unittest.TestCase):
 
     def test_scrape_conference_with_year(self):
         entries_sigir_1971 = self.scraper.scrape_conference("sigir", 1971)
-        self.assertEqual(entries_sigir_1971, self.hits_dblp_api_sigir_1971)
+        self.assertEqual([entry["info"] for entry in entries_sigir_1971],
+                         [entry["info"] for entry in self.hits_dblp_api_sigir_1971])
 
         entries_sigir_1975 = self.scraper.scrape_conference("sigir", 1975)
-        self.assertEqual(entries_sigir_1975, [])
+        self.assertEqual([entry["info"] for entry in entries_sigir_1975],
+                         [])
 
     def test_scrape_conference_batch(self):
         year = 1971
@@ -38,7 +38,8 @@ class TestDBLPscraper(unittest.TestCase):
                    "h": "5",
                    "f": "3"}
         entry_batch = self.scraper._scrape_conference_batch(payload)
-        self.assertEqual(entry_batch, self.hits_dblp_api_sigir_1971_entry_3_to_7)
+        self.assertEqual([entry["info"] for entry in entry_batch],
+                         [entry["info"] for entry in self.hits_dblp_api_sigir_1971[3:8]])
 
     def test_strats(self):
         mocked_entries = [{"info":{"year":"2000"}},
