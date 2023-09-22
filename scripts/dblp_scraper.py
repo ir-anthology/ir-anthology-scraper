@@ -103,12 +103,12 @@ class DBLPscraper:
         bibtex_lines = bibtex.strip().split("\n")
         first_bibtex_line = bibtex_lines[0]
         bibkey = self._get_bibkey_from_entry(entry)
-        personids_string = self._get_personids_string_from_entry(entry)
+        authorid_string = self._get_authorid_string_from_entry(entry)
         dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
         return "\n".join([first_bibtex_line[:first_bibtex_line.find("{")] +  "{" + bibkey + ","] +
                          bibtex_lines[1:-2] + [bibtex_lines[-2] + ","] +
                          ["  dblpbibkey   = " + "{" + dblp_bibkey + "}" + ",",
-                          "  personids    = " + "{" + personids_string + "}",
+                          "  authorid     = " + "{" + authorid_string + "}",
                           "}" + self.bibtex_padding])
 
     def _get_bibkey_from_entry(self, entry):
@@ -120,16 +120,16 @@ class DBLPscraper:
             return ("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().split(" ")[-1]
         return (entry["info"].get("venue", "novenue").lower() + "-" +
                 entry["info"]["year"] + "-" +
-                get_last_name_of_first_author(entry["info"].get("authors", {"author":{"@pid":"nopersonids","text":"noauthorname"}})["author"]).lower())
+                get_last_name_of_first_author(entry["info"].get("authors", {"author":{"@pid":"noauthorid","text":"noauthorname"}})["author"]).lower())
 
-    def _get_personids_string_from_entry(self, entry):
+    def _get_authorid_string_from_entry(self, entry):
         def get_pids_of_authors(list_or_dict):
             if type(list_or_dict) == list:
                 return [author["@pid"] for author in list_or_dict]
             if type(list_or_dict) == dict:
                 return [list_or_dict["@pid"]]
         return " and ".join(get_pids_of_authors(
-            entry["info"].get("authors", {"author":{"@pid":"nopersonids","text":"noauthorname"}})["author"]))
+            entry["info"].get("authors", {"author":{"@pid":"noauthorid","text":"noauthorname"}})["author"]))
 
     def _get_dblp_bibkey_from_entry(self, entry):
         return "DBLP" + ":" + entry["info"]["key"]

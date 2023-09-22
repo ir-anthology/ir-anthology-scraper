@@ -61,8 +61,8 @@ class TestDBLPscraper(unittest.TestCase):
         bibtex_string_edited = self.scraper.amend_bibtex(self.PotthastGBBBFKN21_dblp_json, self.PotthastGBBBFKN21_dblp_bibtex)
         self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex)
 
-    def test_get_personids_string_from_entry(self):
-        self.assertEqual(self.scraper._get_personids_string_from_entry(self.PotthastGBBBFKN21_dblp_json),
+    def test_get_authorid_string_from_entry(self):
+        self.assertEqual(self.scraper._get_authorid_string_from_entry(self.PotthastGBBBFKN21_dblp_json),
                          ("87/6573 and " +
                           "67/6306-2 and " +
                           "195/5852 and " +
