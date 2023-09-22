@@ -75,8 +75,8 @@ class TestDBLPscraper(unittest.TestCase):
                           "69/4806-1 and " +
                           "95/1130"))
 
-    def test_get_bibkey_from_entry(self):
-        self.assertEqual(self.scraper._get_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json),
+    def test_get_ir_anthology_bibkey_from_entry(self):
+        self.assertEqual(self.scraper._get_ir_anthology_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json),
                          "sigir-2021-potthast")
 
     def test_get_dblp_bibkey_from_entry(self):
