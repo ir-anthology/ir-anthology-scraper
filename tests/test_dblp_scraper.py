@@ -24,9 +24,6 @@ class TestDBLPscraper(unittest.TestCase):
         with open("tests/resources/PotthastGBBBFKN21_ir_anthology.bib") as file:
             cls.PotthastGBBBFKN21_ir_anthology_bibtex = "".join(file.readlines())
 
-    def test_scrape_conference(self):
-        self.skipTest("TO DO - FIX ME - HANDLE NEW ENTRIES")
-
     def test_scrape_conference_with_year(self):
         entries_sigir_1971 = self.scraper.scrape_conference("sigir", 1971)
         self.assertEqual([entry["info"] for entry in entries_sigir_1971],

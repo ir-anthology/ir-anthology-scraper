@@ -11,7 +11,7 @@ class DBLPscraper:
         self.logger = print
         self.bibtex_padding = "\n\n\n"
 
-    def scrape_conference(self, conference, year = None):
+    def scrape_conference(self, conference, year):
         """
         Scrape all papers published at a given conference (and in a given year).
 
@@ -24,8 +24,8 @@ class DBLPscraper:
         Returns:
             A list of dictionary entries representing publications of conference provided.
         """
-        payload = {"q": (("streamid:conf/" + conference + ":") +
-                         ("year" + ":" + (str(year) + ":") if year else "")),
+        payload = {"q": ("streamid:conf/" + conference + ":" +
+                         "year" + ":" + str(year)),
                    "format": "json",
                    "h": "1000",
                    "f": "0"}
