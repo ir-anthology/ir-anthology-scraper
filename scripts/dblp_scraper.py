@@ -100,6 +100,7 @@ class DBLPscraper:
         return response.text.strip() + self.bibtex_padding
 
     def amend_bibtex(self, entry, bibtex):
+        bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
         first_bibtex_line = bibtex_lines[0]
         ir_anthology_bibkey = self._get_ir_anthology_bibkey_from_entry(entry)
