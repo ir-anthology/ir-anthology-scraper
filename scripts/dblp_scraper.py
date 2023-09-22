@@ -109,18 +109,20 @@ class DBLPscraper:
         
         return "\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
                          bibtex_lines[1:-2] + [bibtex_lines[-2] + ","] +
-                         ["  dblpbibkey   = " + "{" + dblp_bibkey + "}" + ",",
-                          "  authorid     = " + "{" + authorid_string + "}",
+                         ["  dblpbibkey   = " + "{" + dblp_bibkey + "}" + ("," if authorid_string else "") + "\n" +
+                          ("  authorid     = " + "{" + authorid_string + "}" + "\n" if authorid_string else "") +
                           "}" + self.bibtex_padding])
 
     def _get_authorid_string_from_entry(self, entry):
-        def get_pids_of_authors(list_or_dict):
-            if type(list_or_dict) == list:
-                return [author["@pid"] for author in list_or_dict]
-            if type(list_or_dict) == dict:
-                return [list_or_dict["@pid"]]
+        def get_pids_of_authors(list_or_dict_or_string):
+            if type(list_or_dict_or_string) == list:
+                return [author["@pid"] for author in list_or_dict_or_string]
+            if type(list_or_dict_or_string) == dict:
+                return [list_or_dict_or_string["@pid"]]
+            if type(list_or_dict_or_string) == str:
+                return [""]
         return " and ".join(get_pids_of_authors(
-            entry["info"].get("authors", {"author":{"@pid":"noauthorid","text":"noauthorname"}})["author"]))
+            entry["info"].get("authors", {"author":""})["author"]))
 
     def _get_dblp_bibkey_from_entry(self, entry):
         return "DBLP" + ":" + entry["info"]["key"]
