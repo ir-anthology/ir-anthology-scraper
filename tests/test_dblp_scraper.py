@@ -79,9 +79,9 @@ class TestDBLPscraper(unittest.TestCase):
         self.assertEqual(self.scraper._get_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json),
                          "sigir-2021-potthast")
 
-    def test_get_sourceid_from_bibtex_line(self):
-        bibtex_line = "@inproceedings{DBLP:conf/sigir/PotthastGBBBFKN21,"
-        self.assertEqual(self.scraper._get_sourceid_from_bibtex_line(bibtex_line), "DBLP:conf/sigir/PotthastGBBBFKN21")
+    def test_get_dblp_bibkey_from_entry(self):
+        self.assertEqual(self.scraper._get_dblp_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json),
+                         "DBLP:conf/sigir/PotthastGBBBFKN21")
 
     def test_generate_bibtex_string_of_conference_and_year(self):
         

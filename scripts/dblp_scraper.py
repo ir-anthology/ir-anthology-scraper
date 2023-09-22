@@ -104,10 +104,10 @@ class DBLPscraper:
         first_bibtex_line = bibtex_lines[0]
         bibkey = self._get_bibkey_from_entry(entry)
         personids_string = self._get_personids_string_from_entry(entry)
-        sourceid = self._get_sourceid_from_bibtex_line(first_bibtex_line)
+        dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
         return "\n".join([first_bibtex_line[:first_bibtex_line.find("{")] +  "{" + bibkey + ","] +
                          bibtex_lines[1:-2] + [bibtex_lines[-2] + ","] +
-                         ["  sourceid     = " + "{" + sourceid + "}" + ",",
+                         ["  dblpbibkey   = " + "{" + dblp_bibkey + "}" + ",",
                           "  personids    = " + "{" + personids_string + "}",
                           "}" + self.bibtex_padding])
 
@@ -131,8 +131,8 @@ class DBLPscraper:
         return " and ".join(get_pids_of_authors(
             entry["info"].get("authors", {"author":{"@pid":"nopersonids","text":"noauthorname"}})["author"]))
 
-    def _get_sourceid_from_bibtex_line(self, bibtex_line):
-        return bibtex_line[bibtex_line.find("{")+1:-1]
+    def _get_dblp_bibkey_from_entry(self, entry):
+        return "DBLP" + ":" + entry["info"]["key"]
         
 
 if __name__ == "__main__":
