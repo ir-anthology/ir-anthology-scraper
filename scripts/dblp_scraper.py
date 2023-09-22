@@ -102,11 +102,12 @@ class DBLPscraper:
     def amend_bibtex(self, entry, bibtex):
         bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
-        first_bibtex_line = bibtex_lines[0]
+
+        dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
         ir_anthology_bibkey = self._get_ir_anthology_bibkey_from_entry(entry)
         authorid_string = self._get_authorid_string_from_entry(entry)
-        dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
-        return "\n".join([first_bibtex_line[:first_bibtex_line.find("{")] +  "{" + ir_anthology_bibkey + ","] +
+        
+        return "\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
                          bibtex_lines[1:-2] + [bibtex_lines[-2] + ","] +
                          ["  dblpbibkey   = " + "{" + dblp_bibkey + "}" + ",",
                           "  authorid     = " + "{" + authorid_string + "}",
@@ -120,6 +121,9 @@ class DBLPscraper:
                 return [list_or_dict["@pid"]]
         return " and ".join(get_pids_of_authors(
             entry["info"].get("authors", {"author":{"@pid":"noauthorid","text":"noauthorname"}})["author"]))
+
+    def _get_dblp_bibkey_from_entry(self, entry):
+        return "DBLP" + ":" + entry["info"]["key"]
     
     def _get_ir_anthology_bibkey_from_entry(self, entry):
         def get_last_name_of_first_author(list_or_dict_or_string):
@@ -131,12 +135,9 @@ class DBLPscraper:
                 return list_or_dict_or_string
             return ("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().split(" ")[-1]
         last_name_of_first_author = get_last_name_of_first_author(entry["info"].get("authors", {"author":""})["author"]).lower()
-        return "-".join([entry["info"].get("venue", "novenue").lower(), entry["info"]["year"]] +
+        return "-".join([entry["info"].get("venue", entry["info"].get("key").split("/")[1]).lower(), entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 
-    def _get_dblp_bibkey_from_entry(self, entry):
-        return "DBLP" + ":" + entry["info"]["key"]
-        
 
 if __name__ == "__main__":
     scraper = DBLPscraper()
