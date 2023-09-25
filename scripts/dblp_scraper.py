@@ -10,6 +10,7 @@ class DBLPscraper:
         self.api_endpoint = "https://dblp.org/search/publ/api"
         self.logger = print
         self.bibtex_padding = "\n\n\n"
+        self.suffixes = " abcdefghijklmnopqrstuvxyz"
 
     def scrape_conference(self, conference, year):
         """
@@ -99,6 +100,15 @@ class DBLPscraper:
         response = self._get(url)
         return response.text.strip() + self.bibtex_padding
 
+    def analyse_entries(self, entries):
+        authors = []
+        editorid_string = ""
+        for entry in entries:
+            authors.append(self._get_last_name_of_first_author(entry))
+            if entry["info"]["type"] == "Editorship":
+                editorid_string = self._get_authorid_string_from_entry(entry)
+        return authors, editorid_string
+
     def amend_bibtex(self, entry, bibtex):
         bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
@@ -128,18 +138,18 @@ class DBLPscraper:
         return "DBLP" + ":" + entry["info"]["key"]
     
     def _get_ir_anthology_bibkey_from_entry(self, entry):
-        def get_last_name_of_first_author(list_or_dict_or_string):
-            if type(list_or_dict_or_string) == list:
-                first_author = list_or_dict_or_string[0]["text"]
-            if type(list_or_dict_or_string) == dict:
-                first_author = list_or_dict_or_string["text"]
-            if type(list_or_dict_or_string) == str:
-                return list_or_dict_or_string
-            return ("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().split(" ")[-1]
-        last_name_of_first_author = get_last_name_of_first_author(entry["info"].get("authors", {"author":""})["author"]).lower()
+        last_name_of_first_author = self._get_last_name_of_first_author(entry["info"].get("authors", {"author":""})["author"])
         return "-".join([entry["info"].get("venue", entry["info"].get("key").split("/")[1]).lower(), entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 
+    def _get_last_name_of_first_author(list_or_dict_or_string):
+        if type(list_or_dict_or_string) == list:
+            first_author = list_or_dict_or_string[0]["text"]
+        if type(list_or_dict_or_string) == dict:
+            first_author = list_or_dict_or_string["text"]
+        if type(list_or_dict_or_string) == str:
+            return list_or_dict_or_string
+        return ("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().split(" ")[-1].lower()
 
 if __name__ == "__main__":
     scraper = DBLPscraper()

@@ -1,0 +1,85 @@
+[{
+
+"@score":"2",
+
+"@id":"0000000",
+
+"info":{"title":"Preface, Conference Committee.","venue":"TEST","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/T23","url":"https://dblp.org/rec/conf/test/T23"},
+
+"url":"URL#0000000"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"1111111",
+
+"info":{"authors":{"author":[{"@pid":"1","text":"John Doe"},{"@pid":"2","text":"Jane Doe"}]},"title":"The First Paper By John Doe.","venue":"TEST","pages":"1-50","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/Doe1","doi":"10.1234/1234567.1111111","ee":"https://doi.org/10.1234/1234567.1111111","url":"https://dblp.org/rec/conf/test/Doe1"},
+
+"url":"URL#111111"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"2222222",
+
+"info":{"authors":{"author":[{"@pid":"1","text":"John Doe"},{"@pid":"2","text":"Jane Doe"}]},"title":"The Second Paper By John Doe.","venue":"TEST","pages":"1-50","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/Doe2","doi":"10.1234/1234567.2222222","ee":"https://doi.org/10.1234/1234567.2222222","url":"https://dblp.org/rec/conf/test/Doe2"},
+
+"url":"URL#2222222"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"3333333",
+
+"info":{"authors":{"author":[{"@pid":"1","text":"John Doe"},{"@pid":"2","text":"Jane Doe"}]},"title":"The Third Paper By John Doe.","venue":"TEST","pages":"1-50","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/Doe3","doi":"10.1234/1234567.3333333","ee":"https://doi.org/10.1234/1234567.3333333","url":"https://dblp.org/rec/conf/test/Doe3"},
+
+"url":"URL#3333333"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"4444444",
+
+"info":{"authors":{"author":[{"@pid":"2","text":"Jane Doe"},{"@pid":"1","text":"John Doe"}]},"title":"The First Paper By Jane Doe.","venue":"TEST","pages":"1-50","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/Doe4","doi":"10.1234/1234567.4444444","ee":"https://doi.org/10.1234/1234567.4444444","url":"https://dblp.org/rec/conf/test/Doe4"},
+
+"url":"URL#4444444"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"5555555",
+
+"info":{"authors":{"author":[{"@pid":"2","text":"Jane Doe"},{"@pid":"1","text":"John Doe"}]},"title":"The Second Paper By Jane Doe.","venue":"TEST","pages":"1-50","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/Doe5","doi":"10.1234/1234567.5555555","ee":"https://doi.org/10.1234/1234567.5555555","url":"https://dblp.org/rec/conf/test/Doe5"},
+
+"url":"URL#5555555"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"9999999",
+
+"info":{"authors":{"author":[{"@pid":"9","text":"Jack Doe"}]},"title":"ACM TEST Symposium, College Park, Leipzih, Germany, September 25, 2023, Proceeding","publisher":"ACM","year":"2023","type":"Editorship","key":"conf/test/23","doi":"10.1234/1234567","ee":"https://doi.org/10.1234/1234567","url":"https://dblp.org/rec/conf/test/T23"},
+
+"url":"URL#9999999"
+
+}
+
+]
