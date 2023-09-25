@@ -10,7 +10,7 @@ class DBLPscraper:
         self.api_endpoint = "https://dblp.org/search/publ/api"
         self.logger = print
         self.bibtex_padding = "\n\n\n"
-        self.suffixes = " abcdefghijklmnopqrstuvxyz"
+        self.suffixes = "abcdefghijklmnopqrstuvxyz"
 
     def scrape_conference(self, conference, year):
         """
@@ -107,7 +107,20 @@ class DBLPscraper:
             authors.append(self._get_last_name_of_first_author(entry))
             if entry["info"]["type"] == "Editorship":
                 editorid_string = self._get_authorid_string_from_entry(entry)
+        author_counts = {author:0 for author in set(authors)}
+        authors_and_suffixes = []
+        for author in authors:
+            
         return authors, editorid_string
+
+    def _calculate_author_suffixes(self, authors):
+        author_counts = {author:0 for author in set(authors)}
+        authors_and_suffixes = []
+        for author in authors:
+            author_count = authors_counts[author]
+            
+                
+            authors_and_suffixes.append([author, 
 
     def amend_bibtex(self, entry, bibtex):
         bibtex = bibtex.replace("\n                  ", " ")
