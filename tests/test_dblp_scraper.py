@@ -8,7 +8,6 @@ class TestDBLPscraper(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
-        cls.scraped_entries = []
         cls.scraper = DBLPscraper()
         cls.scraper.logger = lambda x: x
 
@@ -28,7 +27,7 @@ class TestDBLPscraper(unittest.TestCase):
         with open("tests/resources/sigir_1971_ir_anthology.bib") as file:
             cls.sigir_1971_ir_anthology_bibtex = "".join(file.readlines())
 
-        # mocked test resources (for name-bibkey suffix handling)
+        # mocked test resources (for bibkey suffix handling)
         with open("tests/resources/mocked_dblp.json") as file:
             cls.mocked_dblp_json = load(file)
         with open("tests/resources/mocked_dblp.bib") as file:

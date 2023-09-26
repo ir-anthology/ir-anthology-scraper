@@ -12,16 +12,16 @@ class DBLPscraper:
 
     def scrape_conference(self, conference, year):
         """
-        Scrape all papers published at a given conference (and in a given year).
+        Scrape all papers published at a given conference and in a given year from dblp.
 
-        Calls to API require minimum of 3 second courtesy delay to avoid ERROR 429.
+        Calls to the API require minimum of 3 second courtesy delay to avoid ERROR 429.
         
         Args:
             conference: Name of the conference for which entries shall be scraped.
             year: Year for which entries shall be scraped (optional).
 
         Returns:
-            A list of dictionary entries representing publications of conference provided.
+            A list of entries as dictionaries representing publications of conference and year provided.
         """
         payload = {"q": ("streamid:conf/" + conference + ":" +
                          "year" + ":" + str(year)),
@@ -42,13 +42,15 @@ class DBLPscraper:
 
     def _scrape_conference_batch(self, payload):
         """
-        Helper function to scrape specific batch of papers published at a given conference (and in a given year).
+        Helper function to scrape specific batch of papers
+        published at a given conference and in a given year.
         
         Args:
             payload: Dictionary of query parameters.
 
         Returns:
-            A list of dictionary entries representing publications of conference provided.
+            A list of dictionary entries representing
+            publications of conference provided.
         """
         
         response = self._get(self.api_endpoint, payload)
@@ -60,6 +62,22 @@ class DBLPscraper:
         return hits
 
     def _get(self, url, parameters = {}):
+        """
+        Wrapper function for GET request. If the server responds with Error 429,
+        the request is repeated after a delay starting at 10 seconds and incrementing
+        by 10 seconds until the delay is greater than 60 seconds, at which point this
+        function throws a TimeoutError.
+
+        Args:
+            url: The API endpoint of dblp.
+            parameters: Dictionary of query parameters (optional).
+
+        Returns:
+            The API response of dblp to the request.
+
+        Throws:
+            TimeoutError if server responds with Error 429 and delay has increased to 60 seconds.
+        """
         response = requests.get(url, parameters)
         delay = 10
         while response.status_code == 429:
@@ -77,7 +95,7 @@ class DBLPscraper:
         Provide entry count by year.
 
         Args:
-            entry_list: The scraped entries to analyse.
+            entry_list: A list of entries-as-dictionaries to analyse.
 
         Returns:
             A dictionary of year-count key-value pairs.
@@ -92,13 +110,27 @@ class DBLPscraper:
             entry: An entry-as-dictionary as provided by the dblp API.
 
         Returns:
-            A bibtex string with two linebreaks added as padding to the end.
+            A bibtex string with three linebreaks added as padding to the end.
         """
         url = entry["info"]["url"] + ".bib"
         response = self._get(url)
         return response.text.strip() + self.bibtex_padding
 
     def generate_bibtex_string(self, entry_list, bibtex_list):
+        """
+        Generate a string of bibtex entries from a list of entries as provided by the
+        dblp API and a list of bibtex string as provided and scraped from the dblp website.
+
+        Args:
+            entry_list: List of entries-as-dictionaries.
+            bibtex_list: List of bibtex string.
+        Returns:
+            A string of bibtex entries which have been formatted:
+                - IR-Anthology bibkey [CONFERENCE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index])
+                - dblpbibkey field added
+                - authorid field added
+                - editorid field added
+        """
         ir_anthology_bibkeys = []
         editorid_string = ""
         for entry in entry_list:
@@ -110,6 +142,15 @@ class DBLPscraper:
                         for entry,bibtex,ir_anthology_bibkey in zip(entry_list, bibtex_list, ir_anthology_bibkeys)])
 
     def _append_suffixes_to_bibkeys(self, ir_anthology_bibkeys):
+        """
+        Appends deduplication suffixes to a list of bibkeys (-a, -b, ... , -y, -z, -aa, -ab, ...).
+        First entry of a given bibkey receives no suffix.
+
+        Args:
+            ir_anthology_bibkeys: List of bibkeys
+        Returns:
+            List of bibkeys with deduplication suffixes added where applicable.
+        """
         def calculte_suffix_indices(ir_anthology_bibkey_count):
             if ir_anthology_bibkey_count < 27:
                 return [ir_anthology_bibkey_count]
