@@ -1,7 +1,5 @@
 import requests
 import json
-import bibtexparser
-from pprint import pprint
 from time import sleep
 from unicodedata import normalize
 
@@ -11,7 +9,6 @@ class DBLPscraper:
         self.api_endpoint = "https://dblp.org/search/publ/api"
         self.logger = print
         self.bibtex_padding = "\n\n\n"
-        self.suffixes = "abcdefghijklmnopqrstuvxyz"
 
     def scrape_conference(self, conference, year):
         """
@@ -102,23 +99,23 @@ class DBLPscraper:
         return response.text.strip() + self.bibtex_padding
 
     def generate_bibtex_string(self, entry_list, bibtex_list):
-        authors = []
+        ir_anthology_bibkeys = []
         editorid_string = ""
         for entry in entry_list:
-            authors.append(self._get_last_name_of_first_author_from_entry(entry))
+            ir_anthology_bibkeys.append(self._get_ir_anthology_bibkey_from_entry(entry))
             if entry["info"]["type"] == "Editorship":
                 editorid_string = self._get_authorid_string_from_entry(entry)
-        author_suffixes = self._calculate_author_suffixes(authors)
-        return "".join([self._amend_bibtex(entry, bibtex, author_suffix, editorid_string)
-                        for entry,bibtex,author_suffix in zip(entry_list, bibtex_list, author_suffixes)])
+        ir_anthology_bibkeys = self._append_suffixes_to_bibkeys(ir_anthology_bibkeys)
+        return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editorid_string)
+                        for entry,bibtex,ir_anthology_bibkey in zip(entry_list, bibtex_list, ir_anthology_bibkeys)])
 
-    def _calculate_author_suffixes(self, authors):
-        def calculte_suffix_indices(author_count):
-            if author_count < 27:
-                return [author_count]
+    def _append_suffixes_to_bibkeys(self, ir_anthology_bibkeys):
+        def calculte_suffix_indices(ir_anthology_bibkey_count):
+            if ir_anthology_bibkey_count < 27:
+                return [ir_anthology_bibkey_count]
             else:
                 result = [0,0]
-                for _ in range(author_count, 0, -1):
+                for _ in range(ir_anthology_bibkey_count, 0, -1):
                     if result[-1] == 26:
                         if result[-2] == 26:
                             result.append(0)
@@ -127,23 +124,24 @@ class DBLPscraper:
                             result[-1] = 0
                     result[-1] += 1
                 return result
-        def generate_suffix(count):
+        def generate_suffix(ir_anthology_bibkey_count):
             suffixes = " abcdefghijklmnopqrstuvwxyz"
-            return "".join(suffixes[suffix_index].strip() for suffix_index in calculte_suffix_indices(count))
+            return "".join(suffixes[suffix_index].strip() for suffix_index in calculte_suffix_indices(ir_anthology_bibkey_count))
     
-        author_counts = {author:0 for author in set(authors)}
-        author_suffixes = []
-        for author in authors:
-            author_suffixes.append(generate_suffix(author_counts[author]))
-            author_counts[author] += 1
-        return author_suffixes
+        ir_anthology_bibkey_counts = {ir_anthology_bibkey:0 for ir_anthology_bibkey in set(ir_anthology_bibkeys)}
+        
+        ir_anthology_bibkey_suffixes = []
+        for ir_anthology_bibkey in ir_anthology_bibkeys:
+            ir_anthology_bibkey_suffixes.append(generate_suffix(ir_anthology_bibkey_counts[ir_anthology_bibkey]))
+            ir_anthology_bibkey_counts[ir_anthology_bibkey] += 1
+        return [ir_anthology_bibkey + (("-" + ir_anthology_bibkey_suffix) if ir_anthology_bibkey_suffix else "")
+                for ir_anthology_bibkey, ir_anthology_bibkey_suffix in zip(ir_anthology_bibkeys, ir_anthology_bibkey_suffixes)]
 
-    def _amend_bibtex(self, entry, bibtex, author_suffix, editorid_string):
+    def _amend_bibtex(self, entry, bibtex, ir_anthology_bibkey, editorid_string):
         bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
 
         dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
-        ir_anthology_bibkey = self._get_ir_anthology_bibkey_from_entry(entry) + (("-" + author_suffix) if author_suffix else "")
         authorid_string = self._get_authorid_string_from_entry(entry)
         
         return ("\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
@@ -173,55 +171,15 @@ class DBLPscraper:
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 
     def _get_last_name_of_first_author_from_entry(self, entry):
-        authors = entry["info"].get("authors", {"author":""})["author"]
-        if type(authors) == list:
-            first_author = authors[0]["text"]
-        if type(authors) == dict:
-            first_author = authors["text"]
-        if type(authors) == str:
-            first_author = authors
+        ir_anthology_bibkeys = entry["info"].get("authors", {"author":""})["author"]
+        if type(ir_anthology_bibkeys) == list:
+            first_author = ir_anthology_bibkeys[0]["text"]
+        if type(ir_anthology_bibkeys) == dict:
+            first_author = ir_anthology_bibkeys["text"]
+        if type(ir_anthology_bibkeys) == str:
+            first_author = ir_anthology_bibkeys
         return self._convert_to_ascii(("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().lower()).split(" ")[-1]
 
     def _convert_to_ascii(self, string):
         return normalize("NFD",string).encode("ASCII","ignore").decode("ASCII")
-
-if __name__ == "__main__":
-    scraper = DBLPscraper()
-
-
-    with open("../tests/resources/hits_dblp_api_sigir_1971_entry_3_to_7.json") as file:
-        entry_batch = json.load(file)
-
-    pprint(entry_batch)
-
-    input("CHECK")
-
-    entries_sigir = scraper.scrape_conference("sigir")
-
-    stats = scraper.stats(entries_sigir)
-
-    pprint(stats)
-
-    for year in stats:
-        print(year)
-        entries_sigir_year = scraper.scrape_conference("sigir", year)
-        
-        ids_entries_sigir_full_reduced_year = set([e["@id"] for e in entries_sigir if e["info"]["year"] == year])
-        ids_entries_sigir_year = set([e["@id"] for e in entries_sigir_year])
-
-        missing_from_year = ids_entries_sigir_full_reduced_year.difference(ids_entries_sigir_year)
-        missing_from_full = ids_entries_sigir_year.difference(ids_entries_sigir_full_reduced_year)
-
-        print("Missing from year:", missing_from_year)
-        for ID in missing_from_year:
-            for entry in entries_sigir:
-                if entry["@id"] == ID:
-                    pprint(entry)
-
-        print("Missing from full:", missing_from_full)
-        for ID in missing_from_full:
-            for entry in entries_sigir_year:
-                if entry["@id"] == ID:
-                    pprint(entry)
-        print("="*50)
 

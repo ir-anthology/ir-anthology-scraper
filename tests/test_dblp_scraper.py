@@ -70,13 +70,13 @@ class TestDBLPscraper(unittest.TestCase):
         self.assertEqual(bibtex_string_scraped, self.PotthastGBBBFKN21_dblp_bibtex)
 
     def test_calculate_author_suffixes(self):
-        self.assertEqual(self.scraper._calculate_author_suffixes(["Miller","O'Neal","Miller","Miller","Miller","O'Neal"]),
-                                                                 ["","","a","b","c","a"])
+        self.assertEqual(self.scraper._append_suffixes_to_bibkeys(["Miller","O'Neal","Miller","Miller","Miller","O'Neal"]),
+                         ["Miller","O'Neal","Miller-a","Miller-b","Miller-c","O'Neal-a"])
 
     def test_amend_bibtex(self):
         bibtex_string_edited = self.scraper._amend_bibtex(self.PotthastGBBBFKN21_dblp_json[0],
                                                           self.PotthastGBBBFKN21_dblp_bibtex,
-                                                          "",
+                                                          "sigir-2021-potthast",
                                                           "38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321")
         self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex)
 
