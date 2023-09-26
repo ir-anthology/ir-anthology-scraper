@@ -31,16 +31,16 @@ class DBLPscraper:
                    "h": "1000",
                    "f": "0"}
         
-        entries = []
+        entry_list = []
         
-        while len(entries) % 1000 == 0 and not (len(entries) == 0 and payload["f"] != "0"):
-            self.logger("Scraping entries " + str(len(entries) + 1) + "...")
+        while len(entry_list) % 1000 == 0 and not (len(entry_list) == 0 and payload["f"] != "0"):
+            self.logger("Scraping entries " + str(len(entry_list) + 1) + "...")
             sleep(3)
-            entries += self._scrape_conference_batch(payload)
-            self.logger("... to " + str(len(entries)))
+            entry_list += self._scrape_conference_batch(payload)
+            self.logger("... to " + str(len(entry_list)))
             payload["f"] = str(int(payload["f"]) + 1000)
             
-        return entries
+        return entry_list
 
     def _scrape_conference_batch(self, payload):
         """
@@ -74,17 +74,17 @@ class DBLPscraper:
             delay += 10
         return response
 
-    def stats(self, entries):
+    def stats(self, entry_list):
         """
         Provide entry count by year.
 
         Args:
-            entries: The scraped entries to analyse.
+            entry_list: The scraped entries to analyse.
 
         Returns:
             A dictionary of year-count key-value pairs.
         """
-        return {year:[e['info']['year'] for e in entries].count(year) for year in sorted(set([e['info']['year'] for e in entries]))}
+        return {year:[e['info']['year'] for e in entry_list].count(year) for year in sorted(set([e['info']['year'] for e in entry_list]))}
 
     def scrape_bibtex(self, entry):
         """
@@ -100,41 +100,58 @@ class DBLPscraper:
         response = self._get(url)
         return response.text.strip() + self.bibtex_padding
 
-    def analyse_entries(self, entries):
+    def generate_bibtex_string(self, entry_list, bibtex_list):
         authors = []
         editorid_string = ""
-        for entry in entries:
-            authors.append(self._get_last_name_of_first_author(entry))
+        for entry in entry_list:
+            authors.append(self._get_last_name_of_first_author_from_entry(entry))
             if entry["info"]["type"] == "Editorship":
                 editorid_string = self._get_authorid_string_from_entry(entry)
-        author_counts = {author:0 for author in set(authors)}
-        authors_and_suffixes = []
-        for author in authors:
-            
-        return authors, editorid_string
+        author_suffixes = self._calculate_author_suffixes(authors)
+        return "".join([self._amend_bibtex(entry, bibtex, author_suffix, editorid_string)
+                        for entry,bibtex,author_suffix in zip(entry_list, bibtex_list, author_suffixes)])
 
     def _calculate_author_suffixes(self, authors):
+        def calculte_suffix_indices(author_count):
+            if author_count < 27:
+                return [author_count]
+            else:
+                result = [0,0]
+                for _ in range(author_count, 0, -1):
+                    if result[-1] == 26:
+                        if result[-2] == 26:
+                            result.append(0)
+                        else:
+                            result[-2] += 1
+                            result[-1] = 0
+                    result[-1] += 1
+                return result
+        def generate_suffix(count):
+            suffixes = " abcdefghijklmnopqrstuvwxyz"
+            return "".join(suffixes[suffix_index].strip() for suffix_index in calculte_suffix_indices(count))
+    
         author_counts = {author:0 for author in set(authors)}
-        authors_and_suffixes = []
+        author_suffixes = []
         for author in authors:
-            author_count = authors_counts[author]
-            
-                
-            authors_and_suffixes.append([author, 
+            author_suffixes.append(generate_suffix(author_counts[author]))
+            author_counts[author] += 1
+        return author_suffixes
 
-    def amend_bibtex(self, entry, bibtex):
+    def _amend_bibtex(self, entry, bibtex, author_suffix, editorid_string):
         bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
 
         dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
-        ir_anthology_bibkey = self._get_ir_anthology_bibkey_from_entry(entry)
+        ir_anthology_bibkey = self._get_ir_anthology_bibkey_from_entry(entry) + (("-" + author_suffix) if author_suffix else "")
         authorid_string = self._get_authorid_string_from_entry(entry)
         
-        return "\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
-                         bibtex_lines[1:-2] + [bibtex_lines[-2] + ","] +
-                         ["  dblpbibkey   = " + "{" + dblp_bibkey + "}" + ("," if authorid_string else "") + "\n" +
-                          ("  authorid     = " + "{" + authorid_string + "}" + "\n" if authorid_string else "") +
-                          "}" + self.bibtex_padding])
+        return ("\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
+                          bibtex_lines[1:-2] + [bibtex_lines[-2] + ","]) +
+                "\n" +
+                (("  dblpbibkey   = " + "{" + dblp_bibkey + "}") + ("," if authorid_string or editorid_string else "") + "\n") +
+                (("  authorid     = " + "{" + authorid_string + "}" + ("," if editorid_string else "") + "\n") if authorid_string else "") +
+                (("  editorid     = " + "{" + editorid_string + "}" + "\n") if editorid_string else "" + "\n") +
+                "}" + self.bibtex_padding)
 
     def _get_authorid_string_from_entry(self, entry):
         def get_pids_of_authors(list_or_dict_or_string):
@@ -144,24 +161,24 @@ class DBLPscraper:
                 return [list_or_dict_or_string["@pid"]]
             if type(list_or_dict_or_string) == str:
                 return [""]
-        return " and ".join(get_pids_of_authors(
-            entry["info"].get("authors", {"author":""})["author"]))
+        return " and ".join(get_pids_of_authors(entry["info"].get("authors", {"author":""})["author"]))
 
     def _get_dblp_bibkey_from_entry(self, entry):
         return "DBLP" + ":" + entry["info"]["key"]
     
     def _get_ir_anthology_bibkey_from_entry(self, entry):
-        last_name_of_first_author = self._get_last_name_of_first_author(entry["info"].get("authors", {"author":""})["author"])
+        last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
         return "-".join([entry["info"].get("venue", entry["info"].get("key").split("/")[1]).lower(), entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 
-    def _get_last_name_of_first_author(list_or_dict_or_string):
-        if type(list_or_dict_or_string) == list:
-            first_author = list_or_dict_or_string[0]["text"]
-        if type(list_or_dict_or_string) == dict:
-            first_author = list_or_dict_or_string["text"]
-        if type(list_or_dict_or_string) == str:
-            return list_or_dict_or_string
+    def _get_last_name_of_first_author_from_entry(self, entry):
+        authors = entry["info"].get("authors", {"author":""})["author"]
+        if type(authors) == list:
+            first_author = authors[0]["text"]
+        if type(authors) == dict:
+            first_author = authors["text"]
+        if type(authors) == str:
+            first_author = authors
         return ("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().split(" ")[-1].lower()
 
 if __name__ == "__main__":
