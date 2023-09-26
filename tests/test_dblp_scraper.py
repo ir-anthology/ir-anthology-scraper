@@ -111,6 +111,12 @@ class TestDBLPscraper(unittest.TestCase):
         generated_bibtex_string = self.scraper.generate_bibtex_string(self.mocked_dblp_json,
                                                                       self.mocked_dblp_bibtex)
         self.assertEqual(generated_bibtex_string, self.mocked_ir_anthology_bibtex)
+
+    def test_convert_to_ascii(self):
+        with_diacritics    = "áàâǎőȍãȧạṳăȃāașçę"
+        without_diacritics = "aaaaooaaauaaaasce"
+        self.assertEqual(self.scraper._convert_to_ascii(with_diacritics), without_diacritics)
+                                                       
         
 
 if __name__ == "__main__":

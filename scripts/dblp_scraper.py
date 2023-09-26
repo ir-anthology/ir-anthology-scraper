@@ -3,6 +3,7 @@ import json
 import bibtexparser
 from pprint import pprint
 from time import sleep
+from unicodedata import normalize
 
 class DBLPscraper:
 
@@ -179,7 +180,10 @@ class DBLPscraper:
             first_author = authors["text"]
         if type(authors) == str:
             first_author = authors
-        return ("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().split(" ")[-1].lower()
+        return self._convert_to_ascii(("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().lower()).split(" ")[-1]
+
+    def _convert_to_ascii(self, string):
+        return normalize("NFD",string).encode("ASCII","ignore").decode("ASCII")
 
 if __name__ == "__main__":
     scraper = DBLPscraper()
