@@ -19,7 +19,6 @@ class DBLPscraper:
         Args:
             conference: Name of the conference for which entries shall be scraped.
             year: Year for which entries shall be scraped (optional).
-
         Returns:
             A list of entries as dictionaries representing publications of conference and year provided.
         """
@@ -47,7 +46,6 @@ class DBLPscraper:
         
         Args:
             payload: Dictionary of query parameters.
-
         Returns:
             A list of dictionary entries representing
             publications of conference provided.
@@ -71,10 +69,8 @@ class DBLPscraper:
         Args:
             url: The API endpoint of dblp.
             parameters: Dictionary of query parameters (optional).
-
         Returns:
             The API response of dblp to the request.
-
         Throws:
             TimeoutError if server responds with Error 429 and delay has increased to 60 seconds.
         """
@@ -96,7 +92,6 @@ class DBLPscraper:
 
         Args:
             entry_list: A list of entries-as-dictionaries to analyse.
-
         Returns:
             A dictionary of year-count key-value pairs.
         """
@@ -108,7 +103,6 @@ class DBLPscraper:
 
         Args:
             entry: An entry-as-dictionary as provided by the dblp API.
-
         Returns:
             A bibtex string with three linebreaks added as padding to the end.
         """
@@ -125,11 +119,7 @@ class DBLPscraper:
             entry_list: List of entries-as-dictionaries.
             bibtex_list: List of bibtex string.
         Returns:
-            A string of bibtex entries which have been formatted:
-                - IR-Anthology bibkey [CONFERENCE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index])
-                - dblpbibkey field added
-                - authorid field added
-                - editorid field added
+            A string of bibtex entries which have been formatted. For details see _amend_bibtex.
         """
         ir_anthology_bibkeys = []
         editorid_string = ""
@@ -147,7 +137,7 @@ class DBLPscraper:
         First entry of a given bibkey receives no suffix.
 
         Args:
-            ir_anthology_bibkeys: List of bibkeys
+            ir_anthology_bibkeys: List of bibkeys.
         Returns:
             List of bibkeys with deduplication suffixes added where applicable.
         """
@@ -179,6 +169,22 @@ class DBLPscraper:
                 for ir_anthology_bibkey, ir_anthology_bibkey_suffix in zip(ir_anthology_bibkeys, ir_anthology_bibkey_suffixes)]
 
     def _amend_bibtex(self, entry, bibtex, ir_anthology_bibkey, editorid_string):
+        """
+        Amend bibtex as provided by dblp by:
+            - replaying dblp bibkey IR-Anthology bibkey
+              ([CONFERENCE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index]))
+            - adding dblpbibkey field and value
+            - adding authorid field and value
+            - adding editorid field and value
+
+        Args:
+            entry: Entry-as-dictionary as provided by the dblp API.
+            bibtex: Bibtex string as provided by the dblp website.
+            ir_anthology_bibkey: IR-Anthology bibkey as generated from list of entries.
+            editorid_string: Editor-ID string of conference at which this entry appeared.
+        Returns:
+            Bibtex string amended for IR-Anthology.
+        """
         bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
 
@@ -194,33 +200,77 @@ class DBLPscraper:
                 "}" + self.bibtex_padding)
 
     def _get_authorid_string_from_entry(self, entry):
-        def get_pids_of_authors(list_or_dict_or_string):
-            if type(list_or_dict_or_string) == list:
-                return [author["@pid"] for author in list_or_dict_or_string]
-            if type(list_or_dict_or_string) == dict:
-                return [list_or_dict_or_string["@pid"]]
-            if type(list_or_dict_or_string) == str:
-                return [""]
-        return " and ".join(get_pids_of_authors(entry["info"].get("authors", {"author":""})["author"]))
+        """
+        Generate author ID string from entry with the format
+        [ID-OF-FIRST-AUTHOR] and [ID-OF-SECOND-AUTHOR] and ...
+
+        Args:
+            entry: Entry-as-dictionary as provided by the dblp API.
+        Returns:
+            String of author IDs, separated by " and ".
+        """
+        authors = entry["info"].get("authors", {"author":""})["author"]
+        if type(authors) == list:
+            person_ids = [author["@pid"] for author in authors]
+        if type(authors) == dict:
+            person_ids = [authors["@pid"]]
+        if type(authors) == str:
+            person_ids = [""]
+        return " and ".join(person_ids)
 
     def _get_dblp_bibkey_from_entry(self, entry):
+        """
+        Generate dblp bibkey string string from entry as used in the bibtex
+        as provided by the dblp website. As entry as provided by the dblp API
+        does not contain the full dblp bibkey, "DBLP:" is prefixed.        
+
+        Args:
+            entry: Entry-as-dictionary as provided by the dblp API.
+        Returns:
+            String representation of the dblp bibkey of this entry.
+        """
         return "DBLP" + ":" + entry["info"]["key"]
     
     def _get_ir_anthology_bibkey_from_entry(self, entry):
+        """
+        Generate IR-Anthology bibkey from entry with the format
+        [CONFERENCE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index]
+
+        Args:
+            entry: Entry-as-dictionary as provided by the dblp API.
+        Returns:
+            String representation of the IR-Anthology bibkey of this entry.
+        """
         last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
         return "-".join([entry["info"].get("venue", entry["info"].get("key").split("/")[1]).lower(), entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 
     def _get_last_name_of_first_author_from_entry(self, entry):
-        ir_anthology_bibkeys = entry["info"].get("authors", {"author":""})["author"]
-        if type(ir_anthology_bibkeys) == list:
-            first_author = ir_anthology_bibkeys[0]["text"]
-        if type(ir_anthology_bibkeys) == dict:
-            first_author = ir_anthology_bibkeys["text"]
-        if type(ir_anthology_bibkeys) == str:
-            first_author = ir_anthology_bibkeys
+        """
+        Get last name of first author of entry (ASCII formatted).
+
+        Args:
+            entry: Entry-as-dictionary as provided by the dblp API.
+        Returns:
+            String representing the last name of the first author.
+        """
+        authors = entry["info"].get("authors", {"author":""})["author"]
+        if type(authors) == list:
+            first_author = authors[0]["text"]
+        if type(authors) == dict:
+            first_author = authors["text"]
+        if type(authors) == str:
+            first_author = authors
         return self._convert_to_ascii(("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().lower()).split(" ")[-1]
 
     def _convert_to_ascii(self, string):
+        """
+        Format string to ASCII.
+
+        Args:
+            entry: A string.
+        Returns:
+            ASCII-formatted version of the input string.
+        """
         return normalize("NFD",string).encode("ASCII","ignore").decode("ASCII")
 
