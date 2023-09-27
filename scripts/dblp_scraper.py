@@ -22,6 +22,8 @@ class DBLPscraper:
         Returns:
             A list of entries as dictionaries representing publications of conference and year provided.
         """
+        self.logger("Scraping conference " + conference + " " + str(year) + ".")
+        
         payload = {"q": ("streamid:conf/" + conference + ":" +
                          "year" + ":" + str(year)),
                    "format": "json",
@@ -95,11 +97,14 @@ class DBLPscraper:
         Returns:
             A dictionary of year-count key-value pairs.
         """
-        return {year:[e['info']['year'] for e in entry_list].count(year) for year in sorted(set([e['info']['year'] for e in entry_list]))}
+        return {year:[entry['info']['year'] for entry in entry_list].count(year)
+                for year in sorted(set([e['info']['year'] for e in entry_list]))}
 
     def scrape_bibtex(self, entry):
         """
         Scrape the bibtex for a given entry from dblp.
+
+        Calls to the API require minimum of 3 second courtesy delay to avoid ERROR 429.
 
         Args:
             entry: An entry-as-dictionary as provided by the dblp API.
@@ -107,7 +112,9 @@ class DBLPscraper:
             A bibtex string with three linebreaks added as padding to the end.
         """
         url = entry["info"]["url"] + ".bib"
+        self.logger("Scraping bibtex of entry " + entry["info"]["title"] + " (" + entry["info"]["url"] + ")...")
         response = self._get(url)
+        sleep(3)
         return response.text.strip() + self.bibtex_padding
 
     def generate_bibtex_string(self, entry_list, bibtex_list):
@@ -196,7 +203,7 @@ class DBLPscraper:
                 "\n" +
                 (("  dblpbibkey   = " + "{" + dblp_bibkey + "}") + ("," if authorid_string or editorid_string else "") + "\n") +
                 (("  authorid     = " + "{" + authorid_string + "}" + ("," if editorid_string else "") + "\n") if authorid_string else "") +
-                (("  editorid     = " + "{" + editorid_string + "}" + "\n") if editorid_string else "" + "\n") +
+                (("  editorid     = " + "{" + editorid_string + "}" + "\n") if editorid_string else "") +
                 "}" + self.bibtex_padding)
 
     def _get_authorid_string_from_entry(self, entry):
