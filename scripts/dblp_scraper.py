@@ -3,6 +3,7 @@ import json
 from time import sleep
 from unicodedata import normalize
 
+
 class DBLPscraper:
 
     def __init__(self):
@@ -82,7 +83,8 @@ class DBLPscraper:
             if delay > 60:
                 raise TimeoutError("Scrape aborted due to repeated status code 429.")
             else:
-                self.logger("Server responded with 429 (Too Many Requests); waiting " + str(delay) + " seconds...")
+                self.logger("Server responded with 429 (Too Many Requests); waiting " + 
+                            str(delay) + " seconds...")
                 sleep(delay)
             response = requests.get(url, params = parameters)
             delay += 10
@@ -112,7 +114,8 @@ class DBLPscraper:
             A bibtex string with three linebreaks added as padding to the end.
         """
         url = entry["info"]["url"] + ".bib"
-        self.logger("Scraping bibtex of entry " + entry["info"]["title"] + " (" + entry["info"]["url"] + ")...")
+        self.logger("Scraping bibtex of entry " + entry["info"]["title"] + 
+                    " (" + entry["info"]["url"] + ")...")
         response = self._get(url)
         sleep(3)
         return response.text.strip() + self.bibtex_padding
@@ -136,7 +139,9 @@ class DBLPscraper:
                 editorid_string = self._get_authorid_string_from_entry(entry)
         ir_anthology_bibkeys = self._append_suffixes_to_bibkeys(ir_anthology_bibkeys)
         return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editorid_string)
-                        for entry,bibtex,ir_anthology_bibkey in zip(entry_list, bibtex_list, ir_anthology_bibkeys)])
+                        for entry,bibtex,ir_anthology_bibkey in zip(entry_list, 
+                                                                    bibtex_list, 
+                                                                    ir_anthology_bibkeys)])
 
     def _append_suffixes_to_bibkeys(self, ir_anthology_bibkeys):
         """
@@ -164,7 +169,8 @@ class DBLPscraper:
                 return result
         def generate_suffix(ir_anthology_bibkey_count):
             suffixes = " abcdefghijklmnopqrstuvwxyz"
-            return "".join(suffixes[suffix_index].strip() for suffix_index in calculte_suffix_indices(ir_anthology_bibkey_count))
+            return "".join(suffixes[suffix_index].strip() 
+                           for suffix_index in calculte_suffix_indices(ir_anthology_bibkey_count))
     
         ir_anthology_bibkey_counts = {ir_anthology_bibkey:0 for ir_anthology_bibkey in set(ir_anthology_bibkeys)}
         
@@ -173,7 +179,8 @@ class DBLPscraper:
             ir_anthology_bibkey_suffixes.append(generate_suffix(ir_anthology_bibkey_counts[ir_anthology_bibkey]))
             ir_anthology_bibkey_counts[ir_anthology_bibkey] += 1
         return [ir_anthology_bibkey + (("-" + ir_anthology_bibkey_suffix) if ir_anthology_bibkey_suffix else "")
-                for ir_anthology_bibkey, ir_anthology_bibkey_suffix in zip(ir_anthology_bibkeys, ir_anthology_bibkey_suffixes)]
+                for ir_anthology_bibkey, ir_anthology_bibkey_suffix in zip(ir_anthology_bibkeys, 
+                                                                           ir_anthology_bibkey_suffixes)]
 
     def _amend_bibtex(self, entry, bibtex, ir_anthology_bibkey, editorid_string):
         """
@@ -201,9 +208,12 @@ class DBLPscraper:
         return ("\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
                           bibtex_lines[1:-2] + [bibtex_lines[-2] + ","]) +
                 "\n" +
-                (("  dblpbibkey   = " + "{" + dblp_bibkey + "}") + ("," if authorid_string or editorid_string else "") + "\n") +
-                (("  authorid     = " + "{" + authorid_string + "}" + ("," if editorid_string else "") + "\n") if authorid_string else "") +
-                (("  editorid     = " + "{" + editorid_string + "}" + "\n") if editorid_string else "") +
+                (("  dblpbibkey   = " + "{" + dblp_bibkey + "}") + 
+                 ("," if authorid_string or editorid_string else "") + "\n") +
+                (("  authorid     = " + "{" + authorid_string + "}" + 
+                  ("," if editorid_string else "") + "\n") if authorid_string else "") +
+                (("  editorid     = " + "{" + editorid_string + "}" + "\n") 
+                 if editorid_string else "") +
                 "}" + self.bibtex_padding)
 
     def _get_authorid_string_from_entry(self, entry):
@@ -249,7 +259,8 @@ class DBLPscraper:
             String representation of the IR-Anthology bibkey of this entry.
         """
         last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
-        return "-".join([entry["info"].get("venue", entry["info"].get("key").split("/")[1]).lower(), entry["info"]["year"]] +
+        return "-".join([entry["info"].get("venue", entry["info"].get("key").split("/")[1]).lower(),
+                         entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 
     def _get_last_name_of_first_author_from_entry(self, entry):
@@ -268,7 +279,9 @@ class DBLPscraper:
             first_author = authors["text"]
         if type(authors) == str:
             first_author = authors
-        return self._convert_to_ascii(("".join([c for c in first_author if (c.isalpha() or c == " ")])).strip().lower()).split(" ")[-1]
+        return self._convert_to_ascii(("".join([c for c in first_author if (c.isalpha() or c == " ")]))
+                                      .strip()
+                                      .lower()).split(" ")[-1]
 
     def _convert_to_ascii(self, string):
         """

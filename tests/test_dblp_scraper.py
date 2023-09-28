@@ -69,14 +69,16 @@ class TestDBLPscraper(unittest.TestCase):
         self.assertEqual(bibtex_string_scraped, self.PotthastGBBBFKN21_dblp_bibtex)
 
     def test_calculate_author_suffixes(self):
-        self.assertEqual(self.scraper._append_suffixes_to_bibkeys(["Miller","O'Neal","Miller","Miller","Miller","O'Neal"]),
-                         ["Miller","O'Neal","Miller-a","Miller-b","Miller-c","O'Neal-a"])
+        self.assertEqual(self.scraper._append_suffixes_to_bibkeys
+                         (["author1","author2","author1","author1","author1","author2"]),
+                         ["author1","author2","author1-a","author1-b","author1-c","author2-a"])
 
     def test_amend_bibtex(self):
+        auhorid_string = "38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321"
         bibtex_string_edited = self.scraper._amend_bibtex(self.PotthastGBBBFKN21_dblp_json[0],
                                                           self.PotthastGBBBFKN21_dblp_bibtex,
                                                           "sigir-2021-potthast",
-                                                          "38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321")
+                                                          auhorid_string)
         self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex)
 
     def test_get_authorid_string_from_entry(self):
@@ -117,7 +119,6 @@ class TestDBLPscraper(unittest.TestCase):
         self.assertEqual(self.scraper._convert_to_ascii(with_diacritics), without_diacritics)
                                                        
         
-
 if __name__ == "__main__":
     unittest.main()
 
