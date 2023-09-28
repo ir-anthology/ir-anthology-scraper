@@ -84,7 +84,7 @@ class DBLPscraper:
             else:
                 self.logger("Server responded with 429 (Too Many Requests); waiting " + str(delay) + " seconds...")
                 sleep(delay)
-            response = requests.get(self.api_endpoint, params = payload)
+            response = requests.get(url, params = parameters)
             delay += 10
         return response
 
