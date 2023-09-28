@@ -1,5 +1,6 @@
 from scripts.dblp_scraper import DBLPscraper
 from json import load
+from copy import deepcopy
 import unittest
 
 
@@ -11,13 +12,19 @@ class TestDBLPscraper(unittest.TestCase):
         cls.scraper = DBLPscraper()
         cls.scraper.logger = lambda x: x
 
-        # Potthast 2012 test resources
+        # Potthast 2021 test resources
         with open("tests/resources/PotthastGBBBFKN21_dblp.json") as file:
             cls.PotthastGBBBFKN21_dblp_json = load(file)
         with open("tests/resources/PotthastGBBBFKN21_dblp.bib") as file:
             cls.PotthastGBBBFKN21_dblp_bibtex = "".join(file.readlines())
         with open("tests/resources/PotthastGBBBFKN21_ir_anthology.bib") as file:
             cls.PotthastGBBBFKN21_ir_anthology_bibtex = "".join(file.readlines())
+        with open("tests/resources/PotthastGBBBFKN21_ir_anthology_noauthorid.bib") as file:
+            cls.PotthastGBBBFKN21_ir_anthology_bibtex_noauthorid = "".join(file.readlines())
+        with open("tests/resources/PotthastGBBBFKN21_ir_anthology_noeditorid.bib") as file:
+            cls.PotthastGBBBFKN21_ir_anthology_bibtex_noeditorid = "".join(file.readlines())
+        with open("tests/resources/PotthastGBBBFKN21_ir_anthology_noeditorid_noauthorid.bib") as file:
+            cls.PotthastGBBBFKN21_ir_anthology_bibtex_noeditorid_noauthorid = "".join(file.readlines())
 
         # SIGIR 1971 test resources
         with open("tests/resources/sigir_1971_dblp.json") as file:
@@ -55,6 +62,10 @@ class TestDBLPscraper(unittest.TestCase):
         self.assertEqual([entry["info"] for entry in entry_batch],
                          [entry["info"] for entry in self.sigir_1971_dblp_json[3:8]])
 
+    def test_scrape_bibtex(self):     
+        bibtex_string_scraped = self.scraper.scrape_bibtex(self.PotthastGBBBFKN21_dblp_json[0])
+        self.assertEqual(bibtex_string_scraped, self.PotthastGBBBFKN21_dblp_bibtex)
+
     def test_strats(self):
         mocked_entries = [{"info":{"year":"2000"}},
                           {"info":{"year":"2000"}},
@@ -64,22 +75,42 @@ class TestDBLPscraper(unittest.TestCase):
         stats = self.scraper.stats(mocked_entries)
         self.assertEqual(stats, {"2000": 3, "2005": 1, "2010": 1})
 
-    def test_scrape_bibtex(self):     
-        bibtex_string_scraped = self.scraper.scrape_bibtex(self.PotthastGBBBFKN21_dblp_json[0])
-        self.assertEqual(bibtex_string_scraped, self.PotthastGBBBFKN21_dblp_bibtex)
-
     def test_calculate_author_suffixes(self):
         self.assertEqual(self.scraper._append_suffixes_to_bibkeys
                          (["author1","author2","author1","author1","author1","author2"]),
                          ["author1","author2","author1-a","author1-b","author1-c","author2-a"])
 
     def test_amend_bibtex(self):
-        auhorid_string = "38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321"
+        editorid_string = "38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321"
         bibtex_string_edited = self.scraper._amend_bibtex(self.PotthastGBBBFKN21_dblp_json[0],
                                                           self.PotthastGBBBFKN21_dblp_bibtex,
                                                           "sigir-2021-potthast",
-                                                          auhorid_string)
+                                                          editorid_string)
         self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex)
+
+        json_without_author = deepcopy(self.PotthastGBBBFKN21_dblp_json[0])
+        del json_without_author["info"]["authors"]
+        
+        # no author id
+        bibtex_string_edited = self.scraper._amend_bibtex(json_without_author,
+                                                          self.PotthastGBBBFKN21_dblp_bibtex,
+                                                          "sigir-2021-potthast",
+                                                          editorid_string)
+        self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex_noauthorid)
+
+        # no editor id
+        bibtex_string_edited = self.scraper._amend_bibtex(self.PotthastGBBBFKN21_dblp_json[0],
+                                                          self.PotthastGBBBFKN21_dblp_bibtex,
+                                                          "sigir-2021-potthast",
+                                                          "")
+        self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex_noeditorid)
+
+        # no editor id and no author id
+        bibtex_string_edited = self.scraper._amend_bibtex(json_without_author,
+                                                          self.PotthastGBBBFKN21_dblp_bibtex,
+                                                          "sigir-2021-potthast",
+                                                          "")
+        self.assertEqual(bibtex_string_edited, self.PotthastGBBBFKN21_ir_anthology_bibtex_noeditorid_noauthorid)
 
     def test_get_authorid_string_from_entry(self):
         self.assertEqual(self.scraper._get_authorid_string_from_entry(self.PotthastGBBBFKN21_dblp_json[0]),

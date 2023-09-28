@@ -232,7 +232,7 @@ class DBLPscraper:
         if type(authors) == dict:
             person_ids = [authors["@pid"]]
         if type(authors) == str:
-            person_ids = [""]
+            person_ids = []
         return " and ".join(person_ids)
 
     def _get_dblp_bibkey_from_entry(self, entry):
