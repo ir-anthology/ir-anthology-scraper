@@ -1,6 +1,7 @@
 import requests
 import json
 from time import sleep
+from copy import deepcopy
 from unicodedata import normalize
 
 
@@ -125,18 +126,28 @@ class DBLPscraper:
         Generate a string of bibtex entries from a list of entries as provided by the
         dblp API and a list of bibtex string as provided and scraped from the dblp website.
 
+        entry_list is deep-copied to avoid overwriting of original entry_list object.
+
         Args:
             entry_list: List of entries-as-dictionaries.
             bibtex_list: List of bibtex string.
         Returns:
             A string of bibtex entries which have been formatted. For details see _amend_bibtex.
         """
+        entry_list = deepcopy(entry_list)
         ir_anthology_bibkeys = []
+        editors_json = None
         editorid_string = ""
+        for entry, bibtex in zip(entry_list, bibtex_list):
+            if entry["info"]["type"] == "Editorship":
+                editors_json = entry["info"]["authors"]
+                editorid_string = self._get_authorid_string_from_entry(entry)
+        if editors_json:
+            for entry in entry_list:
+                if "authors" not in entry["info"]:
+                    entry["info"]["authors"] = deepcopy(editors_json)
         for entry in entry_list:
             ir_anthology_bibkeys.append(self._get_ir_anthology_bibkey_from_entry(entry))
-            if entry["info"]["type"] == "Editorship":
-                editorid_string = self._get_authorid_string_from_entry(entry)
         ir_anthology_bibkeys = self._append_suffixes_to_bibkeys(ir_anthology_bibkeys)
         return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editorid_string)
                         for entry,bibtex,ir_anthology_bibkey in zip(entry_list, 
@@ -186,6 +197,8 @@ class DBLPscraper:
         """
         bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
+        if entry["info"]["type"] != "Editorship":
+            bibtex_lines = self._add_author_line_to_bibtex_lines(bibtex_lines)
 
         dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
         venue_string = self._get_venue_string_from_entry(entry)
@@ -204,11 +217,32 @@ class DBLPscraper:
                 
                 (("  authorid     = " + "{" + authorid_string + "}" +
                   ("," if editorid_string else "") + "\n")
-                 if authorid_string else "") +
+                 if authorid_string and entry["info"]["type"] != "Editorship" else "") +
                 
                 (("  editorid     = " + "{" + editorid_string + "}" + "\n") 
                  if editorid_string else "") +
                 "}" + self.bibtex_padding)
+
+    def _add_author_line_to_bibtex_lines(self, bibtex_lines):
+        """
+        Add author to bibtex if missing and bibentry type is not 'proceedings'.
+
+        Args:
+            bibtex_lines: The bibtex split into lines.
+        Returns:
+            The bibtex lines provided with author line added as second element,
+            if applicable.
+        """
+        editor_line = ""
+        author_line = ""
+        for line in bibtex_lines:
+            if line.strip().startswith("editor "):
+                editor_line = line
+            if line.strip().startswith("author "):
+                author_line = line
+        if editor_line and not author_line:
+            bibtex_lines.insert(1, editor_line.replace("editor ", "author "))
+        return bibtex_lines
 
     def _get_authorid_string_from_entry(self, entry):
         """
@@ -221,11 +255,11 @@ class DBLPscraper:
             String of author IDs, separated by " and ".
         """
         authors = entry["info"].get("authors", {"author":""})["author"]
-        if type(authors) == list:
+        if type(authors) is list:
             person_ids = [author["@pid"] for author in authors]
-        if type(authors) == dict:
+        if type(authors) is dict:
             person_ids = [authors["@pid"]]
-        if type(authors) == str:
+        if type(authors) is str:
             person_ids = []
         return " and ".join(person_ids)
 
@@ -240,7 +274,7 @@ class DBLPscraper:
             String of venues, separated by " and ".
         """
         venues = entry["info"].get("venue", [])
-        if type(venues) == str:
+        if type(venues) is str:
             venues = [venues]
         return " and ".join(venues)
 
@@ -270,7 +304,9 @@ class DBLPscraper:
         last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
         return "-".join([entry["info"].get("key").split("/")[1].lower(),
                          entry["info"]["year"]] +
-                        ([last_name_of_first_author] if last_name_of_first_author else []))                
+                        ([last_name_of_first_author] if (last_name_of_first_author and
+                                                         entry["info"]["type"] != "Editorship")
+                         else []))                
 
     def _get_last_name_of_first_author_from_entry(self, entry):
         """
@@ -282,11 +318,11 @@ class DBLPscraper:
             String representing the last name of the first author.
         """
         authors = entry["info"].get("authors", {"author":""})["author"]
-        if type(authors) == list:
+        if type(authors) is list:
             first_author = authors[0]["text"]
-        if type(authors) == dict:
+        if type(authors) is dict:
             first_author = authors["text"]
-        if type(authors) == str:
+        if type(authors) is str:
             first_author = authors
         return self._convert_to_ascii(("".join([c for c in first_author if (c.isalpha() or c == " ")]))
                                       .strip()
