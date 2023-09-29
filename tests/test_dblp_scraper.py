@@ -126,6 +126,14 @@ class TestDBLPscraper(unittest.TestCase):
                           "69/4806-1 and " +
                           "95/1130"))
 
+    def test_get_venue_string_from_entry(self):
+        mocked_entry = {"info":{"venue":["venue1", "venue2"]}}
+        self.assertEqual(self.scraper._get_venue_string_from_entry(mocked_entry), "venue1 and venue2")
+        mocked_entry = {"info":{"venue":"venue"}}
+        self.assertEqual(self.scraper._get_venue_string_from_entry(mocked_entry), "venue")
+        mocked_entry = {"info":{}}
+        self.assertEqual(self.scraper._get_venue_string_from_entry(mocked_entry), "")
+
     def test_get_ir_anthology_bibkey_from_entry(self):
         self.assertEqual(self.scraper._get_ir_anthology_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json[0]),
                          "sigir-2021-potthast")

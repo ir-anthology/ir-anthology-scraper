@@ -203,15 +203,24 @@ class DBLPscraper:
         bibtex_lines = bibtex.strip().split("\n")
 
         dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
+        venue_string = self._get_venue_string_from_entry(entry)
         authorid_string = self._get_authorid_string_from_entry(entry)
         
         return ("\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
                           bibtex_lines[1:-2] + [bibtex_lines[-2] + ","]) +
                 "\n" +
-                (("  dblpbibkey   = " + "{" + dblp_bibkey + "}") + 
-                 ("," if authorid_string or editorid_string else "") + "\n") +
-                (("  authorid     = " + "{" + authorid_string + "}" + 
-                  ("," if editorid_string else "") + "\n") if authorid_string else "") +
+                
+                ("  dblpbibkey   = " + "{" + dblp_bibkey + "}" + 
+                 ("," if authorid_string or editorid_string or venue_string else "") + "\n") +
+                
+                (("  venue        = " + "{" + venue_string + "}" +
+                  ("," if authorid_string or editorid_string else "") + "\n")
+                 if venue_string else "") +
+                
+                (("  authorid     = " + "{" + authorid_string + "}" +
+                  ("," if editorid_string else "") + "\n")
+                 if authorid_string else "") +
+                
                 (("  editorid     = " + "{" + editorid_string + "}" + "\n") 
                  if editorid_string else "") +
                 "}" + self.bibtex_padding)
@@ -234,6 +243,21 @@ class DBLPscraper:
         if type(authors) == str:
             person_ids = []
         return " and ".join(person_ids)
+
+    def _get_venue_string_from_entry(self, entry):
+        """
+        Generate venue string from entry with the format
+        [FIRST-VENUE] and [SECOND-AUTHOR] and ...
+
+        Args:
+            entry: Entry-as-dictionary as provided by the dblp API.
+        Returns:
+            String of venues, separated by " and ".
+        """
+        venues = entry["info"].get("venue", [])
+        if type(venues) == str:
+            venues = [venues]
+        return " and ".join(venues)
 
     def _get_dblp_bibkey_from_entry(self, entry):
         """
