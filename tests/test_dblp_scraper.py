@@ -78,7 +78,7 @@ class TestDBLPscraper(unittest.TestCase):
     def test_calculate_author_suffixes(self):
         self.assertEqual(self.scraper._append_suffixes_to_bibkeys
                          (["author1","author2","author1","author1","author1","author2"]),
-                         ["author1","author2","author1-a","author1-b","author1-c","author2-a"])
+                         ["author1","author2","author1-2","author1-3","author1-4","author2-2"])
 
     def test_amend_bibtex(self):
         editorid_string = "38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321"

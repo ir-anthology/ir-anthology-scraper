@@ -145,42 +145,26 @@ class DBLPscraper:
 
     def _append_suffixes_to_bibkeys(self, ir_anthology_bibkeys):
         """
-        Appends deduplication suffixes to a list of bibkeys (-a, -b, ... , -y, -z, -aa, -ab, ...).
-        First entry of a given bibkey receives no suffix.
+        Appends deduplication suffixes to a list of bibkeys.
+        First entry of a given bibkey receives no suffixm,
+        second entry ends in -2, third ends in -3, and so on.
 
         Args:
             ir_anthology_bibkeys: List of bibkeys.
         Returns:
             List of bibkeys with deduplication suffixes added where applicable.
-        """
-        def calculte_suffix_indices(ir_anthology_bibkey_count):
-            if ir_anthology_bibkey_count < 27:
-                return [ir_anthology_bibkey_count]
-            else:
-                result = [0,0]
-                for _ in range(ir_anthology_bibkey_count, 0, -1):
-                    if result[-1] == 26:
-                        if result[-2] == 26:
-                            result.append(0)
-                        else:
-                            result[-2] += 1
-                            result[-1] = 0
-                    result[-1] += 1
-                return result
-        def generate_suffix(ir_anthology_bibkey_count):
-            suffixes = " abcdefghijklmnopqrstuvwxyz"
-            return "".join(suffixes[suffix_index].strip() 
-                           for suffix_index in calculte_suffix_indices(ir_anthology_bibkey_count))
-    
-        ir_anthology_bibkey_counts = {ir_anthology_bibkey:0 for ir_anthology_bibkey in set(ir_anthology_bibkeys)}
+        """    
+        ir_anthology_bibkey_counts = {}
         
-        ir_anthology_bibkey_suffixes = []
+        ir_anthology_bibkeys_with_suffixes = []
         for ir_anthology_bibkey in ir_anthology_bibkeys:
-            ir_anthology_bibkey_suffixes.append(generate_suffix(ir_anthology_bibkey_counts[ir_anthology_bibkey]))
-            ir_anthology_bibkey_counts[ir_anthology_bibkey] += 1
-        return [ir_anthology_bibkey + (("-" + ir_anthology_bibkey_suffix) if ir_anthology_bibkey_suffix else "")
-                for ir_anthology_bibkey, ir_anthology_bibkey_suffix in zip(ir_anthology_bibkeys, 
-                                                                           ir_anthology_bibkey_suffixes)]
+            if ir_anthology_bibkey not in ir_anthology_bibkey_counts:
+                ir_anthology_bibkeys_with_suffixes.append(ir_anthology_bibkey)
+                ir_anthology_bibkey_counts[ir_anthology_bibkey] = 2
+            else:
+                ir_anthology_bibkeys_with_suffixes.append(ir_anthology_bibkey + "-" + str(ir_anthology_bibkey_counts[ir_anthology_bibkey]))
+                ir_anthology_bibkey_counts[ir_anthology_bibkey] += 1
+        return ir_anthology_bibkeys_with_suffixes
 
     def _amend_bibtex(self, entry, bibtex, ir_anthology_bibkey, editorid_string):
         """
