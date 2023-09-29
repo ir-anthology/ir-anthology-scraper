@@ -172,6 +172,7 @@ class DBLPscraper:
             - replaying dblp bibkey IR-Anthology bibkey
               ([CONFERENCE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index]))
             - adding dblpbibkey field and value
+            - adding venue field and venue
             - adding authorid field and value
             - adding editorid field and value
 
