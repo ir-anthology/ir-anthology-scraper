@@ -259,7 +259,7 @@ class DBLPscraper:
             String representation of the IR-Anthology bibkey of this entry.
         """
         last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
-        return "-".join([entry["info"].get("venue", entry["info"].get("key").split("/")[1]).lower(),
+        return "-".join([entry["info"].get("key").split("/")[1].lower(),
                          entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 
