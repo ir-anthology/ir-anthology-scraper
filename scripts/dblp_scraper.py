@@ -135,7 +135,8 @@ class DBLPscraper:
             A string of bibtex entries which have been formatted. For details see _amend_bibtex.
         """
         entry_list = deepcopy(entry_list)
-        ir_anthology_bibkeys = []
+        bibtex_list = deepcopy(bibtex_list)
+
         editors_json = None
         editorid_string = ""
         for entry, bibtex in zip(entry_list, bibtex_list):
@@ -146,9 +147,9 @@ class DBLPscraper:
             for entry in entry_list:
                 if "authors" not in entry["info"]:
                     entry["info"]["authors"] = deepcopy(editors_json)
-        for entry in entry_list:
-            ir_anthology_bibkeys.append(self._get_ir_anthology_bibkey_from_entry(entry))
-        ir_anthology_bibkeys = self._append_suffixes_to_bibkeys(ir_anthology_bibkeys)
+
+        ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry) for entry in entry_list])
+
         return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editorid_string)
                         for entry,bibtex,ir_anthology_bibkey in zip(entry_list, 
                                                                     bibtex_list, 
