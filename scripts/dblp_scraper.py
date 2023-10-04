@@ -3,7 +3,7 @@ import json
 from time import sleep
 from copy import deepcopy
 from unicodedata import normalize
-
+from re import search
 
 class DBLPscraper:
 
@@ -135,22 +135,24 @@ class DBLPscraper:
             A string of bibtex entries which have been formatted. For details see _amend_bibtex.
         """
         entry_list = deepcopy(entry_list)
-        bibtex_list = deepcopy(bibtex_list)
+        bibtex_list = [bibtex.replace("\n                  ", " ") for bibtex in bibtex_list]
 
-        editors_json = None
-        editorid_string = ""
+        editors = {}
+        
         for entry, bibtex in zip(entry_list, bibtex_list):
+            
             if entry["info"]["type"] == "Editorship":
-                editors_json = entry["info"]["authors"]
-                editorid_string = self._get_authorid_string_from_entry(entry)
-        if editors_json:
-            for entry in entry_list:
-                if "authors" not in entry["info"]:
-                    entry["info"]["authors"] = deepcopy(editors_json)
+
+                for bibtex_line in bibtex.strip().split("\n"):
+                    if bibtex_line.strip().startswith("editor"):
+                        match = search("{.*}", bibtex_line)
+                        if match:
+                            editors[bibtex_line[match.start():match.end()]] = self._get_authorid_string_from_entry(entry)#{"json":entry["info"]["authors"],
+                                                                    
 
         ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry) for entry in entry_list])
 
-        return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editorid_string)
+        return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editors)
                         for entry,bibtex,ir_anthology_bibkey in zip(entry_list, 
                                                                     bibtex_list, 
                                                                     ir_anthology_bibkeys)])
@@ -178,7 +180,7 @@ class DBLPscraper:
                 ir_anthology_bibkey_counts[ir_anthology_bibkey] += 1
         return ir_anthology_bibkeys_with_suffixes
 
-    def _amend_bibtex(self, entry, bibtex, ir_anthology_bibkey, editorid_string):
+    def _amend_bibtex(self, entry, bibtex, ir_anthology_bibkey, editors):
         """
         Amend bibtex as provided by dblp by:
             - replaying dblp bibkey IR-Anthology bibkey
@@ -192,39 +194,37 @@ class DBLPscraper:
             entry: Entry-as-dictionary as provided by the dblp API.
             bibtex: Bibtex string as provided by the dblp website.
             ir_anthology_bibkey: IR-Anthology bibkey as generated from list of entries.
-            editorid_string: Editor-ID string of conference at which this entry appeared.
+            editors: Dictionary of editor bibtex value as key and editorid as value
+                     of conference at which this entry appeared.
         Returns:
             Bibtex string amended for IR-Anthology.
         """
         bibtex = bibtex.replace("\n                  ", " ")
         bibtex_lines = bibtex.strip().split("\n")
-        if entry["info"]["type"] != "Editorship":
-            bibtex_lines = self._add_author_line_to_bibtex_lines(bibtex_lines)
+        bibtex_lines = self._handle_editorship(bibtex_lines, editors)
 
         dblp_bibkey = self._get_dblp_bibkey_from_entry(entry)
         venue_string = self._get_venue_string_from_entry(entry)
         authorid_string = self._get_authorid_string_from_entry(entry)
         
         return ("\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
-                          bibtex_lines[1:-2] + [bibtex_lines[-2] + ","]) +
+                          bibtex_lines[1:-2]) +
                 "\n" +
                 
-                ("  dblpbibkey   = " + "{" + dblp_bibkey + "}" + 
-                 ("," if authorid_string or editorid_string or venue_string else "") + "\n") +
+                ("  dblpbibkey   = " + "{" + dblp_bibkey + "}" + "," + "\n") +
                 
                 (("  venue        = " + "{" + venue_string + "}" +
-                  ("," if authorid_string or editorid_string else "") + "\n")
+                  ("," if authorid_string else "") + "\n")
                  if venue_string else "") +
                 
-                (("  authorid     = " + "{" + authorid_string + "}" +
-                  ("," if editorid_string else "") + "\n")
-                 if authorid_string and entry["info"]["type"] != "Editorship" else "") +
-                
-                (("  editorid     = " + "{" + editorid_string + "}" + "\n") 
-                 if editorid_string else "") +
+                (("  authorid     = " + "{" + authorid_string + "}" + "," + "\n")
+                 if authorid_string and entry["info"]["type"] != "Editorshop" else "") +
+
+                bibtex_lines[-2] + "," +
+
                 "}" + self.bibtex_padding)
 
-    def _add_author_line_to_bibtex_lines(self, bibtex_lines):
+    def _handle_editorship(self, bibtex_lines, editors):
         """
         Add author to bibtex if missing and bibentry type is not 'proceedings'.
 
@@ -234,15 +234,22 @@ class DBLPscraper:
             The bibtex lines provided with author line added as second element,
             if applicable.
         """
-        editor_line = ""
-        author_line = ""
-        for line in bibtex_lines:
-            if line.strip().startswith("editor "):
-                editor_line = line
-            if line.strip().startswith("author "):
-                author_line = line
-        if editor_line and not author_line:
-            bibtex_lines.insert(1, editor_line.replace("editor ", "author "))
+        editor = ""
+        editorid = ""
+        author = False
+        for bibtex_line in bibtex_lines:
+            if bibtex_line.strip().startswith("editor"):
+                match = search("{.*}", bibtex_line)
+                if match:
+                    editor = bibtex_line[match.start():match.end()]
+                    editorid = editors.get(bibtex_line[match.start():match.end()], "")
+            if bibtex_line.strip().startswith("author"):
+                author = True
+        if editor:
+            if not author:
+                bibtex_lines.insert(1, "  author       = " + editor + ",")
+                bibtex_lines.insert(-1, "  authorid     = " + editorid + ",")
+            bibtex_lines.insert(-1, "  editorid     = " + editorid)
         return bibtex_lines
 
     def _get_authorid_string_from_entry(self, entry):
