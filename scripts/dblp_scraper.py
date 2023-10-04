@@ -137,25 +137,31 @@ class DBLPscraper:
         entry_list = deepcopy(entry_list)
         bibtex_list = [bibtex.replace("\n                  ", " ") for bibtex in bibtex_list]
 
-        editors = {}
-        
+        editor_map = {}
+        # GET EDITOR STRING AND EDITOR ID STRINGS
         for entry, bibtex in zip(entry_list, bibtex_list):
-            
             if entry["info"]["type"] == "Editorship":
-
                 for bibtex_line in bibtex.strip().split("\n"):
                     if bibtex_line.strip().startswith("editor"):
                         match = search("{.*}", bibtex_line)
                         if match:
-                            editors[bibtex_line[match.start():match.end()]] = self._get_authorid_string_from_entry(entry)#{"json":entry["info"]["authors"],
-                                                                    
+                            editor_map[bibtex_line[match.start():match.end()]] = {"editorid_string":self._get_authorid_string_from_entry(entry),
+                                                                                  "last_name_of_first_editor":self._get_last_name_of_first_author_from_entry(entry)}
+        editorid_strings = []
+        last_names_of_first_editor = []
+        for entry, bibtex in zip(entry_list, bibtex_list):
+            for bibtex_line in bibtex.strip().split("\n"):
+                if bibtex_line.strip().startswith("editor"):
+                    match = search("{.*}", bibtex_line)
+                    editorid_strings.append(editor_map[bibtex_line[match.start():match.end()]])
 
         ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry) for entry in entry_list])
 
-        return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editors)
-                        for entry,bibtex,ir_anthology_bibkey in zip(entry_list, 
-                                                                    bibtex_list, 
-                                                                    ir_anthology_bibkeys)])
+        return "".join([self._amend_bibtex(entry, bibtex, ir_anthology_bibkey, editorid_string)
+                        for entry,bibtex,ir_anthology_bibkey,editorid_string in zip(entry_list,
+                                                                                    bibtex_list,
+                                                                                    ir_anthology_bibkeys,
+                                                                                    editorid_strings)])
 
     def _append_suffixes_to_bibkeys(self, ir_anthology_bibkeys):
         """
@@ -207,22 +213,21 @@ class DBLPscraper:
         venue_string = self._get_venue_string_from_entry(entry)
         authorid_string = self._get_authorid_string_from_entry(entry)
         
-        return ("\n".join([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
-                          bibtex_lines[1:-2]) +
-                "\n" +
-                
-                ("  dblpbibkey   = " + "{" + dblp_bibkey + "}" + "," + "\n") +
-                
-                (("  venue        = " + "{" + venue_string + "}" +
-                  ("," if authorid_string else "") + "\n")
-                 if venue_string else "") +
-                
-                (("  authorid     = " + "{" + authorid_string + "}" + "," + "\n")
-                 if authorid_string and entry["info"]["type"] != "Editorshop" else "") +
+        return self._join_bibtex_lines([bibtex_lines[0].replace(dblp_bibkey, ir_anthology_bibkey)] +
+                                       bibtex_lines[1:-2] +
+                                       ["  dblpbibkey   = " + "{" + dblp_bibkey + "}"] +
+                                       [("  venue        = " + "{" + venue_string + "}") if venue_string else ""] +
+                                       [("  authorid     = " + "{" + authorid_string + "}") if authorid_string and entry["info"]["type"] != "Editorship" else ""] +
+                                       [bibtex_lines[-2]] +
+                                       ["}"])
 
-                bibtex_lines[-2] + "," +
-
-                "}" + self.bibtex_padding)
+    def _join_bibtex_lines(self, bibtex_lines):
+        STRING = bibtex_lines[0]
+        for line in bibtex_lines[1:-2]:
+            STRING += ("\n" + line + ("," if not line.endswith(",") else "")) if line else ""
+        STRING += ("\n" + bibtex_lines[-2]) if bibtex_lines[-2] else ""
+        STRING += "\n" + bibtex_lines[-1] + self.bibtex_padding
+        return STRING
 
     def _handle_editorship(self, bibtex_lines, editors):
         """
@@ -249,7 +254,8 @@ class DBLPscraper:
             if not author:
                 bibtex_lines.insert(1, "  author       = " + editor + ",")
                 bibtex_lines.insert(-1, "  authorid     = " + editorid + ",")
-            bibtex_lines.insert(-1, "  editorid     = " + editorid)
+            if editorid:
+                bibtex_lines.insert(-1, "  editorid     = " + editorid)
         return bibtex_lines
 
     def _get_authorid_string_from_entry(self, entry):

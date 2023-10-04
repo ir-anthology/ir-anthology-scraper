@@ -82,7 +82,7 @@ class TestDBLPscraper(unittest.TestCase):
 
     def test_amend_bibtex(self):
         editors = {"{Fernando Diaz and Chirag Shah and Torsten Suel and Pablo Castells and Rosie Jones and Tetsuya Sakai}":
-        "38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321"}
+                   "{38/2451-1 and 04/4087 and s/TorstenSuel and c/PabloCastells and 40/5446 and 18/6321}"}
         bibtex_string_edited = self.scraper._amend_bibtex(self.PotthastGBBBFKN21_dblp_json[0],
                                                           self.PotthastGBBBFKN21_dblp_bibtex,
                                                           "sigir-2021-potthast",
