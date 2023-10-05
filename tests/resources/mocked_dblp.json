@@ -64,7 +64,7 @@
 
 "@id":"5555555",
 
-"info":{"authors":{"author":[{"@pid":"2","text":"Jane Doe"},{"@pid":"1","text":"John Doe"}]},"title":"The Second Paper By Jane Doe.","venue":"TEST","pages":"1-50","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/Doe5","doi":"10.1234/1234567.5555555","ee":"https://doi.org/10.1234/1234567.5555555","url":"https://dblp.org/rec/conf/test/Doe5"},
+"info":{"authors":{"author":[{"@pid":"2","text":"Jane Doe"},{"@pid":"1","text":"John Doe"}]},"title":"The Workshop.","venue":"TEST","pages":"1-50","year":"2023","type":"Conference and Workshop Papers","access":"open","key":"conf/test/Doe5","doi":"10.1234/1234567.5555555","ee":"https://doi.org/10.1234/1234567.5555555","url":"https://dblp.org/rec/conf/test/Doe5"},
 
 "url":"URL#5555555"
 
@@ -77,6 +77,18 @@
 "@id":"9999999",
 
 "info":{"authors":{"author":[{"@pid":"9","text":"Jack Doe"}]},"title":"ACM TEST Symposium, College Park, Leipzih, Germany, September 25, 2023, Proceeding","publisher":"ACM","year":"2023","type":"Editorship","key":"conf/test/23","doi":"10.1234/1234567","ee":"https://doi.org/10.1234/1234567","url":"https://dblp.org/rec/conf/test/T23"},
+
+"url":"URL#9999999"
+
+},
+
+{
+
+"@score":"2",
+
+"@id":"9999999",
+
+"info":{"authors":{"author":[{"@pid":"10","text":"Jason Doe"}]},"title":"ACM TEST Symposium, College Park, Leipzih, Germany, September 25, 2023, Workshop","publisher":"ACM","year":"2023","type":"Editorship","key":"conf/test/23w","doi":"10.1234/1234567","ee":"https://doi.org/10.1234/1234567","url":"https://dblp.org/rec/conf/test/T23"},
 
 "url":"URL#9999999"
 
