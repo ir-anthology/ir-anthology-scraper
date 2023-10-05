@@ -9,8 +9,12 @@ class DBLPscraper:
 
     def __init__(self):
         self.api_endpoint = "https://dblp.org/search/publ/api"
-        self.logger = print
+        self.logger = self.log
         self.bibtex_padding = "\n\n\n"
+
+    def log(self, message):
+        with open("log.txt", "a") as file:
+            file.write(message + "\n")
 
     def scrape_conference(self, conference, year):
         """
