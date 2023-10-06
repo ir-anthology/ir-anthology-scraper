@@ -1,19 +1,26 @@
 import requests
 import json
+from os.path import exists, sep
+from os import makedirs
 from time import sleep
 from copy import deepcopy
 from unicodedata import normalize
+from datetime import datetime
 from re import search
 
 class DBLPscraper:
 
-    def __init__(self):
+    def __init__(self, output_directory):
         self.api_endpoint = "https://dblp.org/search/publ/api"
         self.logger = self.log
         self.bibtex_padding = "\n\n\n"
+        now = datetime.now()
+        self.output_directory = output_directory + sep + str(now.year) + "-" + str(now.month) + "-" + str(now.day)
 
     def log(self, message):
-        with open("log.txt", "a") as file:
+        if not exists(self.output_directory):
+            makedirs(self.output_directory)
+        with open(self.output_directory + "/" + "log.txt", "a") as file:
             file.write(message + "\n")
 
     def scrape_conference(self, conference, year):
@@ -28,7 +35,7 @@ class DBLPscraper:
         Returns:
             A list of entries as dictionaries representing publications of conference and year provided.
         """
-        self.logger("Scraping conference " + conference + " " + str(year) + ".")
+        self.logger("\nScraping conference " + conference + " " + str(year) + ".")
         
         payload = {"q": ("streamid:conf/" + conference + ":" +
                          "year" + ":" + str(year)),
@@ -39,13 +46,12 @@ class DBLPscraper:
         entry_list = []
         
         while len(entry_list) % 1000 == 0 and not (len(entry_list) == 0 and payload["f"] != "0"):
-            self.logger("Scraping entries " + str(len(entry_list) + 1) + "...")
             sleep(3)
             entry_list += self._scrape_conference_batch(payload)
-            self.logger("... to " + str(len(entry_list)))
+            self.logger(str(len(entry_list)) + " entries scraped from dblp API.")
             payload["f"] = str(int(payload["f"]) + 1000)
             
-        return entry_list
+        return [entry for entry in entry_list if entry["info"]["key"].startswith("conf/" + conference)]
 
     def _scrape_conference_batch(self, payload):
         """
@@ -119,8 +125,8 @@ class DBLPscraper:
             A bibtex string with three linebreaks added as padding to the end.
         """
         url = entry["info"]["url"] + ".bib"
-        self.logger("Scraping bibtex of entry " + entry["info"]["title"] + 
-                    " (" + entry["info"]["url"] + ")...")
+        #self.logger("Scraping bibtex of entry " + entry["info"]["title"] + 
+        #            " (" + entry["info"]["url"] + ")...")
         response = self._get(url)
         sleep(3)
         return response.text.strip() + self.bibtex_padding
@@ -148,10 +154,12 @@ class DBLPscraper:
                 for bibtex_line in bibtex_lines:
                     if bibtex_line.strip().startswith("editor"):
                         match = search("{.*}", bibtex_line)
-                        editors = bibtex_line[match.start():match.end()]
-                        editor_map[editors] = {"editorid_string":self._get_personid_string_from_entry(entry),
-                                               "persons":entry["info"]["authors"]}
-
+                        if match:
+                            editors = bibtex_line[match.start():match.end()]
+                            editor_map[editors] = {"editorid_string":self._get_personid_string_from_entry(entry),
+                                                   "persons":entry["info"]["authors"]}
+        if editor_map == {}:
+            self.logger("No editors found.")
         dblp_bibkeys = []
         
         # ADD DBLPBIBKEY, VENUE AND (WHERE APPLICABLE) AUTHOR, EDITOR, AUTHORID AND EDITORID TO BIBTEX
@@ -166,21 +174,36 @@ class DBLPscraper:
                 bibtex_lines.insert(-1, "  venue        = " + "{" + venue_string + "}")
 
             author = False
-            editors = ""
+            editors = False
             for bibtex_line in bibtex_lines:
                 if bibtex_line.strip().startswith("author"):
                     author = True
                 if bibtex_line.strip().startswith("editor"):
                     match = search("{.*}", bibtex_line)
                     editors = bibtex_line[match.start():match.end()]
+            if not editors:
+                editors = "ERROR: NO EDITORS"
+                bibtex_lines.insert(2 if author else 1, "  editor       = " + "{" + editors + "}")
+                self.logger("No editor for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+            try:
+                editorid_string = editor_map[editors]["editorid_string"]
+            except KeyError:
+                editorid_string = "ERROR: NO EDITORID"
+                self.logger("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+
             if not author:
                 if entry["info"]["type"] != "Editorship":
                     bibtex_lines.insert( 1, "  author       = " + editors + ",")
-                    bibtex_lines.insert(-1, "  authorid     = " + "{" + editor_map[editors]["editorid_string"] + "}")
-                    entry["info"]["authors"] = editor_map[editors]["persons"]
+                    bibtex_lines.insert(-1, "  authorid     = " + "{" + editorid_string + "}")
+                    if "authors" not in entry["info"]:
+                        try:
+                            entry["info"]["authors"] = editor_map[editors]["persons"]
+                        except KeyError:
+                            entry["info"]["authors"] = {"@pid":"ERROR: NO PERSONID","@text":"ERROR: NO PERSON TEXT"}
+                            self.logger("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
             else:
                 bibtex_lines.insert(-1, "  authorid     = " + "{" + self._get_personid_string_from_entry(entry) + "}")
-            bibtex_lines.insert(-1, "  editorid     = " + "{" + editor_map[editors]["editorid_string"] + "}")
+            bibtex_lines.insert(-1, "  editorid     = " + "{" + editorid_string + "}")
 
         # GENERATE IR-ANTHOLOGY BIBKEYS
         ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry) for entry in entry_list])

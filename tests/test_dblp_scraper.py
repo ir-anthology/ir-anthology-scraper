@@ -9,7 +9,7 @@ class TestDBLPscraper(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
-        cls.scraper = DBLPscraper()
+        cls.scraper = DBLPscraper(output_directory="output")
         cls.scraper.logger = lambda x: x
 
         # Potthast 2021 test resources
