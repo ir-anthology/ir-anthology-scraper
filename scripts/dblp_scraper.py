@@ -15,7 +15,7 @@ class DBLPscraper:
         self.logger = self.log
         self.bibtex_padding = "\n\n\n"
         now = datetime.now()
-        self.output_directory = output_directory + sep + str(now.year) + "-" + str(now.month) + "-" + str(now.day)
+        self.output_directory = output_directory + sep + str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0"))
 
     def log(self, message):
         if not exists(self.output_directory):
