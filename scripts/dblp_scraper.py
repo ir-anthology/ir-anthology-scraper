@@ -8,6 +8,7 @@ from unicodedata import normalize
 from datetime import datetime
 from re import search
 
+
 class DBLPscraper:
 
     def __init__(self, output_directory):
@@ -181,26 +182,36 @@ class DBLPscraper:
                 if bibtex_line.strip().startswith("editor"):
                     match = search("{.*}", bibtex_line)
                     editors = bibtex_line[match.start():match.end()]
+                    
             if not editors:
                 editors = "ERROR: NO EDITORS"
+                editorid_string = "ERROR: NO EDITORID"
                 bibtex_lines.insert(2 if author else 1, "  editor       = " + "{" + editors + "}")
                 self.logger("No editor for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
-            try:
-                editorid_string = editor_map[editors]["editorid_string"]
-            except KeyError:
-                editorid_string = "ERROR: NO EDITORID"
                 self.logger("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+            else:
+                if editors in editor_map:
+                    editorid_string = editor_map[editors]["editorid_string"]
+                else:
+                    editorid_string = "ERROR: NO EDITORID"
+                    self.logger("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
 
             if not author:
                 if entry["info"]["type"] != "Editorship":
                     bibtex_lines.insert( 1, "  author       = " + editors + ",")
                     bibtex_lines.insert(-1, "  authorid     = " + "{" + editorid_string + "}")
                     if "authors" not in entry["info"]:
-                        try:
+                        if editors in editor_map:
                             entry["info"]["authors"] = editor_map[editors]["persons"]
-                        except KeyError:
-                            entry["info"]["authors"] = {"@pid":"ERROR: NO PERSONID","@text":"ERROR: NO PERSON TEXT"}
-                            self.logger("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                        else:
+                            self.logger("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex. Trying to obtain persons from bibtex instead.")
+                            try:
+                                entry["info"]["authors"] = {"author":[{"@pid":"PERSOBNIDERROR",
+                                                                       "text":author_text.strip()}
+                                                                      for author_text in editors[1:-1].split("and")]}
+                            except:
+                                self.logger("Failed to get persons from bibtex for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                                entry["info"]["authors"] = {"author":{"@pid":"PERSONIDERROR","@text":"PERSONTEXTERROR"}} 
             else:
                 bibtex_lines.insert(-1, "  authorid     = " + "{" + self._get_personid_string_from_entry(entry) + "}")
             bibtex_lines.insert(-1, "  editorid     = " + "{" + editorid_string + "}")

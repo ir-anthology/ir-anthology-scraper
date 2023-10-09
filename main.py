@@ -32,7 +32,7 @@ if __name__ == "__main__":
                     bibtex_list.append(scraper.scrape_bibtex(entry))
                 bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list)
 
-                write_bibtex_string_to_file(bibtex_string, scraper.output_directory + sep + conference + "-" + year + ".bib")
+                write_bibtex_string_to_file(bibtex_string, scraper.output_directory + sep + conference + "-" + str(year) + ".txt")
             except:
                 scraper.log(traceback.format_exc())
 
