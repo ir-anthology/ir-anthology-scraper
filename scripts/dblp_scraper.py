@@ -184,37 +184,39 @@ class DBLPscraper:
                     editors = bibtex_line[match.start():match.end()]
                     
             if not editors:
-                editors = "ERROR: NO EDITORS"
-                editorid_string = "ERROR: NO EDITORID"
-                bibtex_lines.insert(2 if author else 1, "  editor       = " + "{" + editors + "}")
+                editors = "{ERROR: NO EDITORS}"
+                editorid_string = "{ERROR: NO EDITORID}"
+                bibtex_lines.insert(2 if author else 1, "  editor       = " + editors)
                 self.logger("No editor for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
                 self.logger("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
             else:
                 if editors in editor_map:
-                    editorid_string = editor_map[editors]["editorid_string"]
+                    editorid_string = "{" + editor_map[editors]["editorid_string"] + "}"
                 else:
-                    editorid_string = "ERROR: NO EDITORID"
+                    editorid_string = "{ERROR: NO EDITORID}"
                     self.logger("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
 
             if not author:
                 if entry["info"]["type"] != "Editorship":
                     bibtex_lines.insert( 1, "  author       = " + editors + ",")
-                    bibtex_lines.insert(-1, "  authorid     = " + "{" + editorid_string + "}")
+                    bibtex_lines.insert(-1, "  authorid     = " + editorid_string)
                     if "authors" not in entry["info"]:
                         if editors in editor_map:
                             entry["info"]["authors"] = editor_map[editors]["persons"]
                         else:
-                            self.logger("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex. Trying to obtain persons from bibtex instead.")
-                            try:
-                                entry["info"]["authors"] = {"author":[{"@pid":"PERSOBNIDERROR",
+                            self.logger("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " +
+                                        entry["info"]["url"] + ".html?view=bibtex. Trying to obtain persons from bibtex instead.")
+                            if editors != "{}":
+                                entry["info"]["authors"] = {"author":[{"@pid":"PERSONIDERROR",
                                                                        "text":author_text.strip()}
-                                                                      for author_text in editors[1:-1].split("and")]}
-                            except:
-                                self.logger("Failed to get persons from bibtex for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                                                                      for author_text in editors[1:-1].split(" and ")]}
+                            else:
+                                self.logger("Unable to get persons from bibtex for entry " + venue_string + " " + entry["info"]["year"] + " " +
+                                            entry["info"]["url"] + ".html?view=bibtex")
                                 entry["info"]["authors"] = {"author":{"@pid":"PERSONIDERROR","@text":"PERSONTEXTERROR"}} 
             else:
                 bibtex_lines.insert(-1, "  authorid     = " + "{" + self._get_personid_string_from_entry(entry) + "}")
-            bibtex_lines.insert(-1, "  editorid     = " + "{" + editorid_string + "}")
+            bibtex_lines.insert(-1, "  editorid     = " + editorid_string)
 
         # GENERATE IR-ANTHOLOGY BIBKEYS
         ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry) for entry in entry_list])
@@ -323,10 +325,12 @@ class DBLPscraper:
             String representation of the IR-Anthology bibkey of this entry.
         """
         last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
+        self.logger(str(entry))
         return "-".join([entry["info"].get("key").split("/")[1].lower(),
                          entry["info"]["year"]] +
                         ([last_name_of_first_author] if (last_name_of_first_author and
-                                                         entry["info"]["type"] != "Editorship")
+                                                         entry["info"]["type"] != "Editorship" and
+                                                         entry["info"]["authors"]["author"][0]["@pid"] != "PERSONIDERROR")
                          else []))                
 
     def _get_last_name_of_first_author_from_entry(self, entry):
