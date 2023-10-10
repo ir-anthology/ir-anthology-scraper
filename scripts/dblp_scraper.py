@@ -254,13 +254,15 @@ class DBLPscraper:
             if not editor and editor_string:
                 bibtex_lines.insert(1,
                                     "  editor       = " + editor_string)
+                editor = True
             if not author and author_string:
                 bibtex_lines.insert( 1,
                                     "  author       = " + author_string)
-            if authorid: 
+                author = True
+            if author: 
                 bibtex_lines.insert(-1,
                                     "  authorid     = " + authorid_string)
-            if editorid:
+            if editor:
                 bibtex_lines.insert(-1,
                                     "  editorid     = " + editorid_string)
 
