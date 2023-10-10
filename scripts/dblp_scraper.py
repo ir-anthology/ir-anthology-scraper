@@ -218,7 +218,6 @@ class DBLPscraper:
                 if not editorship:
                     if editor:
                         author_string = editor_string
-                        author = True
                         if editorid:
                             authorid_string = editorid_string
                             authorid = True
