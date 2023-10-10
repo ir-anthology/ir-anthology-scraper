@@ -235,9 +235,8 @@ class DBLPscraper:
                 del entry["info"]["authors"]
             else:
                 if "authors" not in entry["info"]:
-                    if editor:
-                        if editorid:
-                            entry["info"]["authors"] = editor_map[editor_string]["persons"]
+                    if editor and editor_string in editor_map:
+                        entry["info"]["authors"] = editor_map[editor_string]["persons"]
                     else:
                         self.logger("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " +
                                     entry["info"]["url"] + ".html?view=bibtex. Trying to obtain persons from bibtex instead.")
