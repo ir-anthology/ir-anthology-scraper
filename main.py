@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
 
     with open("config.json") as file:
-        config = {"cikm":[1992]}#load(file)
+        config = load(file)
 
     bibtex_dump = {}
     if exists("bibtex_dump.txt"):
