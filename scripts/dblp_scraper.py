@@ -16,6 +16,8 @@ class DBLPscraper:
         self.logger = self.log
         self.bibtex_padding = "\n\n\n"
         now = datetime.now()
+        with open("scripts/character_map.json") as file:
+            self.character_map = json.load(file)
         self.output_directory = output_directory + sep + str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0"))
 
     def log(self, message):
@@ -393,11 +395,14 @@ class DBLPscraper:
             first_author = authors["text"]
         if type(authors) is str:
             first_author = authors
-        return self._convert_to_ascii(("".join([c for c in first_author if (c.isalpha() or c == " ")]))
-                                      .strip()
-                                      .lower()).split(" ")[-1]
+        return self._convert_name("".join([c for c in first_author if (c.isalpha() or c == " ")])
+                                  .strip()
+                                  .split(" ")[-1]
+                                  .lower())
 
-    def _convert_to_ascii(self, string):
+    def _convert_name(self, string):
+        def normalize_to_ascii(character):
+            return normalize("NFD",character).encode("ASCII","ignore").decode("ASCII")
         """
         Format string to ASCII.
 
@@ -406,5 +411,5 @@ class DBLPscraper:
         Returns:
             ASCII-formatted version of the input string.
         """
-        return normalize("NFD",string).encode("ASCII","ignore").decode("ASCII")
+        return "".join([self.character_map.get(character, normalize_to_ascii(character)) for character in string])
 

@@ -138,10 +138,10 @@ class TestDBLPscraper(unittest.TestCase):
         self.assertEqual(self.scraper._get_ir_anthology_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json[0]),
                          "sigir-2021-potthast")
 
-    def test_convert_to_ascii(self):
-        with_diacritics    = "áàâǎőȍãȧạṳăȃāașçę"
-        without_diacritics = "aaaaooaaauaaaasce"
-        self.assertEqual(self.scraper._convert_to_ascii(with_diacritics), without_diacritics)
+    def test_convert_name(self):
+        with_diacritics    = "áàâǎőȍãȧạṳăȃāașçęäöüßñå"
+        without_diacritics = "aaaaooaaauaaaasceaeoeuessna"
+        self.assertEqual(self.scraper._convert_name(with_diacritics), without_diacritics)
                                                        
         
 if __name__ == "__main__":
