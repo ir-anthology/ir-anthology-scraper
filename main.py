@@ -17,14 +17,14 @@ if __name__ == "__main__":
     with open("config.json") as file:
         config = load(file)
 
+    scraper = DBLPscraper("output")
+    
     bibtex_dump = {}
     if exists("bibtex_dump.txt"):
         with open("bibtex_dump.txt") as file:
             for line in file:
                 url, bibtex = loads(line)
                 bibtex_dump[url] = bibtex
-        
-    scraper = DBLPscraper("output")
 
     for conference, years in config.items():
 
@@ -44,8 +44,15 @@ if __name__ == "__main__":
                         bibtex_list.append(bibtex)
                 bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list)
 
-                write_bibtex_string_to_file(bibtex_string, scraper.output_directory + sep + conference + "-" + str(year) + ".txt")
+                conference_directory = scraper.output_directory + sep + conference
+
+                if not exists(conference_directory):
+                    makedirs(conference_directory)
+
+                write_bibtex_string_to_file(bibtex_string, conference_directory + sep + conference + "-" + str(year) + ".txt")
             except:
                 scraper.log(traceback.format_exc())
+                with open(scraper.output_directory + sep + "failed.txt", "a") as file:
+                    file.write(conference + " " + str(year))
 
         scraper.log("="*100)
