@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from scripts.dblp_scraper import DBLPscraper
 from os.path import dirname, exists, sep
 from os import makedirs
-from json import dumps, loads, load
+from json import dump, dumps, loads, load
 from tqdm import tqdm
 import traceback
 
@@ -18,6 +18,7 @@ if __name__ == "__main__":
         config = load(file)
 
     scraper = DBLPscraper("output")
+    fails = {}
     
     bibtex_dump = {}
     if exists("bibtex_dump.txt"):
@@ -39,7 +40,7 @@ if __name__ == "__main__":
                         bibtex_list.append(bibtex_dump[entry["info"]["url"]])
                     except KeyError:
                         bibtex = scraper.scrape_bibtex(entry)
-                        with open("bibtex_dump.txt", "a") as file:
+                        with open(scraper.output_directory + sep + "bibtex_dump.txt", "a") as file:
                             file.write(dumps([entry["info"]["url"],bibtex]) + "\n")
                         bibtex_list.append(bibtex)
                 bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list)
@@ -52,7 +53,10 @@ if __name__ == "__main__":
                 write_bibtex_string_to_file(bibtex_string, conference_directory + sep + conference + "-" + str(year) + ".txt")
             except:
                 scraper.log(traceback.format_exc())
-                with open(scraper.output_directory + sep + "failed.txt", "a") as file:
-                    file.write(conference + " " + str(year))
+                with open(scraper.output_directory + sep + "failed.json") as file:
+                    if conference not in fails:
+                        fails[conference] = []
+                    fails[conference].append(str(year))
+                    dump(fails, file)
 
         scraper.log("="*100)
