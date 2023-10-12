@@ -234,7 +234,7 @@ class DBLPscraper:
 
             # HANDLE PERSON DATA IN JSON
             if editorship:
-                del entry["info"]["authors"]
+                if "authors" in entry["info"]: del entry["info"]["authors"]
             else:
                 if "authors" not in entry["info"]:
                     if editor and editor_string in editor_map:
