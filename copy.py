@@ -4,7 +4,7 @@ from glob import glob
 from os.path import exists
 from tqdm import tqdm
 
-bibfilepaths = glob("/media/" + getuser() + "/Data/Work/github/ir-anthology-scraper/output/pdfs/*/*/*.bib")
+bibfilepaths = glob("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/pdfs/*/*/*.bib")
 pdffilepaths = glob("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/sources/wlgc/papers-by-doi/*/*")
 
 entry_count = 0
