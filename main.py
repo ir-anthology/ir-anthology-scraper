@@ -13,7 +13,7 @@ def write_bibtex_string_to_file(bibtex_string, output_filepath):
 
 if __name__ == "__main__":
 
-    scraper = DBLPscraper("failed")
+    scraper = DBLPscraper("output/journals")
 
     with open(scraper.output_directory + sep + "config.json") as file:
         config = load(file)
@@ -29,16 +29,16 @@ if __name__ == "__main__":
                 url, bibtex = loads(line)
                 bibtex_dump[url] = bibtex
 
-    for conference, years in config.items():
+    for venue, years in {"ftir":[2006]}.items():#config["venues"].items():
 
         for year in years:
 
             try:
-                print("Scraping bibtex entries of " + conference + " " + str(year) + "...")
-                entry_list = scraper.scrape_conference(conference, year)
+                print("Scraping bibtex entries of " + venue + " " + str(year) + "...")
+                entry_list = scraper.scrape_venue(config["venuetype"], venue, year)
                 with open(scraper.output_directory + sep + "dblp_json_results.csv", "a") as file:
                     csv_writer = writer(file, delimiter=",")
-                    csv_writer.writerow([conference, year, len(entry_list)])
+                    csv_writer.writerow([venue, year, len(entry_list)])
 
                 if entry_list != []:
                     bibtex_list = []
@@ -52,18 +52,18 @@ if __name__ == "__main__":
                             bibtex_list.append(bibtex)
                     bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list)
 
-                    conference_year_directory = scraper.output_directory + sep + conference + sep + str(year)
+                    conference_year_directory = scraper.output_directory + sep + venue + sep + str(year)
 
                     if not exists(conference_year_directory):
                         makedirs(conference_year_directory)
-                    write_bibtex_string_to_file(bibtex_string, conference_year_directory + sep + conference + "-" + str(year) + ".bib")
+                    write_bibtex_string_to_file(bibtex_string, conference_year_directory + sep + venue + "-" + str(year) + ".bib")
 
             except:
                 scraper.log(traceback.format_exc())
                 with open(scraper.output_directory + sep + "failed.json", "w") as file:
-                    if conference not in fails:
-                        fails[conference] = []
-                    fails[conference].append(year)
+                    if venue not in fails:
+                        fails[venue] = []
+                    fails[venue].append(year)
                     dump(fails, file)
 
         scraper.log("="*100)

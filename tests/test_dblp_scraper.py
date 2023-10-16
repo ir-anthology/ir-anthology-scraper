@@ -42,23 +42,23 @@ class TestDBLPscraper(unittest.TestCase):
         with open("tests/resources/mocked_ir_anthology.bib") as file:
             cls.mocked_ir_anthology_bibtex = "".join(file.readlines())
 
-    def test_scrape_conference_with_year(self):
-        entries_sigir_1971 = self.scraper.scrape_conference("sigir", 1971)
+    def test_scrape_venue_with_year(self):
+        entries_sigir_1971 = self.scraper.scrape_venue("conf", "sigir", 1971)
         self.assertEqual([entry["info"] for entry in entries_sigir_1971],
                          [entry["info"] for entry in self.sigir_1971_dblp_json])
 
-        entries_sigir_1975 = self.scraper.scrape_conference("sigir", 1975)
+        entries_sigir_1975 = self.scraper.scrape_venue("conf", "sigir", 1975)
         self.assertEqual([entry["info"] for entry in entries_sigir_1975],
                          [])        
 
-    def test_scrape_conference_batch(self):
+    def test_scrape_venue_batch(self):
         year = 1971
         payload = {"q": (("streamid:conf/" + "sigir" + ":") +
                          ("year" + ":" + (str(year) + ":") if year else "")),
                    "format": "json",
                    "h": "5",
                    "f": "3"}
-        entry_batch = self.scraper._scrape_conference_batch(payload)
+        entry_batch = self.scraper._scrape_venue_batch(payload)
         self.assertEqual([entry["info"] for entry in entry_batch],
                          [entry["info"] for entry in self.sigir_1971_dblp_json[3:8]])
 

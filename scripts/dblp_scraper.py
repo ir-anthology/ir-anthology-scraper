@@ -28,21 +28,24 @@ class DBLPscraper:
         with open(self.output_directory + "/" + "log.txt", "a") as file:
             file.write(message + "\n")
 
-    def scrape_conference(self, conference, year):
+    def scrape_venue(self, venuetype, venue, year):
         """
-        Scrape all papers published at a given conference and in a given year from dblp.
+        Scrape all papers published at a given venue and in a given year from dblp.
 
         Calls to the API require minimum of 3 second courtesy delay to avoid ERROR 429.
         
         Args:
-            conference: Name of the conference for which entries shall be scraped.
+            venuetype: Type of venue, either 'conf' or 'journals'.
+            venue: Name of the venue for which entries shall be scraped.
             year: Year for which entries shall be scraped (optional).
         Returns:
-            A list of entries as dictionaries representing publications of conference and year provided.
+            A list of entries as dictionaries representing publications of venue and year provided.
         """
-        self.logger("\nScraping conference " + conference + " " + str(year) + ".")
+        if venuetype not in ["conf", "journals"]:
+            raise ValueError("Invalid venue type ('conf' or 'journals').")
+        self.logger("\nScraping venue " + venue + " " + str(year) + ".")
         
-        payload = {"q": ("streamid:conf/" + conference + ":" +
+        payload = {"q": ("streamid:" + venuetype + "/" + venue + ":" +
                          "year" + ":" + str(year)),
                    "format": "json",
                    "h": "1000",
@@ -52,22 +55,22 @@ class DBLPscraper:
         
         while len(entry_list) % 1000 == 0 and not (len(entry_list) == 0 and payload["f"] != "0"):
             sleep(3)
-            entry_list += self._scrape_conference_batch(payload)
+            entry_list += self._scrape_venue_batch(payload)
             self.logger(str(len(entry_list)) + " entries scraped from dblp API.")
             payload["f"] = str(int(payload["f"]) + 1000)
             
-        return [entry for entry in entry_list if entry["info"]["key"].startswith("conf/" + conference)]
+        return [entry for entry in entry_list if entry["info"]["key"].startswith(venuetype + "/" + venue)]
 
-    def _scrape_conference_batch(self, payload):
+    def _scrape_venue_batch(self, payload):
         """
         Helper function to scrape specific batch of papers
-        published at a given conference and in a given year.
+        published at a given venue and in a given year.
         
         Args:
             payload: Dictionary of query parameters.
         Returns:
             A list of dictionary entries representing
-            publications of conference provided.
+            publications of venue provided.
         """
         
         response = self._get(self.api_endpoint, payload)
@@ -368,7 +371,7 @@ class DBLPscraper:
     def _get_ir_anthology_bibkey_from_entry(self, entry):
         """
         Generate IR-Anthology bibkey from entry with the format
-        [CONFERENCE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index]
+        [VENUE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index]
 
         Args:
             entry: Entry-as-dictionary as provided by the dblp API.
