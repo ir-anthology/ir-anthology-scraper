@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
         for year in years:
 
-            for entry in scraper.scrape_conference(conference, year):
+            for entry in scraper.scrape_venue(conference, year):
                 authors = entry["info"].get("authors", {"author":""})["author"]
                 if type(authors) is list:
                     first_author = authors[0]["text"]
