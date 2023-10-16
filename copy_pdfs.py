@@ -7,7 +7,7 @@ from os.path import dirname, exists, sep
 from os import makedirs
 from tqdm import tqdm
 
-bibfilepaths = sorted(glob("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/pdfs/civr/*/*.bib"))
+bibfilepaths = sorted(glob("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/pdfs/*/*/*.bib"))
 log_file_path = "/media/" + getuser() + "/Ceph/data-in-progress/data-research/ir-anthology-scraper/output/copy_pdfs_log.txt"
 entry_count = 0
 pdf_count = 0
@@ -35,5 +35,5 @@ for bibfilepath_count, bibfilepath in enumerate(bibfilepaths, 1):
                         logfile.write("   - " + entry["ID"] + ".pdf" + "\n")
                         
 with open(log_file_path, "a") as logfile:
-    logfile.write("PDFs: " + str(pdf_count) + "\n")
+    logfile.write("\nPDFs: " + str(pdf_count) + "\n")
     logfile.write("PDFs: " + str(entry_count) + "\n")
