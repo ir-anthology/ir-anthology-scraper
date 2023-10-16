@@ -16,7 +16,7 @@ for bibfilepath in tqdm(bibfilepaths, total=len(bibfilepaths)):
         for entry in entries:
             entry_count += 1
             if "doi" in entry:
-                if exists("/media/wolfgang/Ceph/data-in-production/ir-anthology/sources/wlgc/papers-by-doi/" + entry["doi"] + ".pdf"):
+                if exists("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/sources/wlgc/papers-by-doi/" + entry["doi"] + ".pdf"):
                     pdf_count += 1
 
 print(pdf_count)
