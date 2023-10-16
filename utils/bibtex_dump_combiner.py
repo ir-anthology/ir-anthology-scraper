@@ -1,8 +1,8 @@
 from json import loads, dumps
 from os.path import exists
 
-bibtex_dump_filepaths = ["/media/wolfgang/Data/Work/github/ir-anthology-scraper/output/2023-10-12/bibtex_dump.txt",
-                         "/media/wolfgang/Data/Work/github/ir-anthology-scraper/output/2023-10-12 first run/bibtex_dump.txt"]
+bibtex_dump_filepaths = ["dblp_bibtex_cache1.txt",
+                         "dblp_bibtex_cache2.txt"]
 
 entries = {}
 
@@ -19,7 +19,7 @@ for bibtex_dump_filepath in bibtex_dump_filepaths:
 
 print(len(entries))
 
-if not exists("bibtex_dump.txt"):
-    with open("bibtex_dump.txt", "w") as file:
+if not exists("dblp_bibtex_cache.txt"):
+    with open("dblp_bibtex_cache.txt", "w") as file:
         for url in sorted(entries.keys(),key = lambda url: url.split("/")[4]):
             file.write(dumps([url,entries[url]]) + "\n")

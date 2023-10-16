@@ -18,7 +18,9 @@ class DBLPscraper:
         now = datetime.now()
         with open("scripts/character_map.json") as file:
             self.character_map = json.load(file)
-        self.output_directory = output_directory + sep + str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0"))
+        self.output_directory = output_directory
+        self.logger(str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + " " +
+                    str(now.hour) + ":" + str(now.minute) + ":" + (str(now.second).rjust(2,"0")))
 
     def log(self, message):
         if not exists(self.output_directory):
