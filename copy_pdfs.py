@@ -7,7 +7,7 @@ from os.path import dirname, exists, sep
 from os import makedirs
 from tqdm import tqdm
 
-bibfilepaths = glob("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/pdfs/civr/*/*.bib")
+bibfilepaths = glob("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/pdfs/*/*/*.bib")
 pdffilepaths = glob("/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/sources/wlgc/papers-by-doi/*/*")
 log_file_path = "/media/" + getuser() + "/Ceph/data-in-progress/data-research/ir-anthology-scraper/output/copy_pdfs_log.txt"
 entry_count = 0
