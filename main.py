@@ -29,7 +29,7 @@ if __name__ == "__main__":
                 url, bibtex = loads(line)
                 bibtex_dump[url] = bibtex
 
-    for venue, years in {"ftir":[2006]}.items():#config["venues"].items():
+    for venue, years in config["venues"].items():
 
         for year in years:
 
