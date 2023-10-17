@@ -12,18 +12,20 @@ ir_anthology_root = "../" #"/media/" + getuser() + "/Ceph/data-in-production/ir-
 
 now = datetime.now()
 start = (str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + "_" +
-         str(now.hour) + "-" + str(now.minute) + "-" + (str(now.second).rjust(2,"0")))
+         str(now.hour) + "-" + str(now.minute))
 
-log_file_path = "copy_pdfs_" + start + ".csv"
+venuetype = ["conferences","journals"][1]
 
-bibfilepaths = sorted(glob(ir_anthology_root + "conferences/*/*/*.bib"))
+log_file_path = "copy_pdfs_" + venuetype + "_" + start + ".csv"
+
+bibfilepaths = sorted(glob(ir_anthology_root + venuetype + "/*/*/*.bib"))
 
 entry_count = 0
 pdf_count = 0
 
 DRY_RUN = True
 
-# CSV FORMAT: NUMBER, VENUE, YEAR, AUTHOR, DOI, WLGC, WCSP15
+# CSV FORMAT: VENUE, YEAR, BIBKEY, DOI, WLGC, WCSP15
 
 for bibfilepath in tqdm(bibfilepaths, total=len(bibfilepaths)):
     with open(bibfilepath) as bibfile:
@@ -37,7 +39,6 @@ for bibfilepath in tqdm(bibfilepaths, total=len(bibfilepaths)):
             
             venue = ID[0]
             year = ID[1]
-            author = ID[2] if len(ID) == 3 else "n/a"
             
             pdf_dst_path = dirname(bibfilepath) + sep + entry["ID"] + ".pdf"
                 
@@ -58,12 +59,12 @@ for bibfilepath in tqdm(bibfilepaths, total=len(bibfilepaths)):
                     
                 with open(log_file_path, "a") as csv_file:
                     csv_writer = writer(csv_file, delimiter=",")
-                    csv_writer.writerow([entry_count, venue, year, author, entry["doi"], "wlgc" if wlgc else "", ""])
+                    csv_writer.writerow([entry_count, venue, year, entry["ID"], entry["doi"], "wlgc" if wlgc else "", ""])
             else:
                 with open(log_file_path, "a") as csv_file:
                     csv_writer = writer(csv_file, delimiter=",")
-                    csv_writer.writerow([entry_count, venue, year, author, "", "", ""])
+                    csv_writer.writerow([entry_count, venue, year, entry["ID"], "", "", ""])
                         
-with open("copy_pdfs_" + start + ".txt", "w") as logfile:
+with open("copy_pdfs_" + venuetype + "_" + start + ".txt", "w") as logfile:
     logfile.write("\nPDFs: " + str(pdf_count) + "\n")
     logfile.write("PDFs: " + str(entry_count) + "\n")
