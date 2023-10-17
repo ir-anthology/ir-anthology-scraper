@@ -13,9 +13,9 @@ def write_bibtex_string_to_file(bibtex_string, output_filepath):
 
 if __name__ == "__main__":
 
-    scraper = DBLPscraper("output/journals")
+    scraper = DBLPscraper("output/journals-failed")
 
-    with open(scraper.output_directory + sep + "config.json") as file:
+    with open("output/journals/failed.json") as file:
         config = load(file)
         
     fails = {}
@@ -64,6 +64,6 @@ if __name__ == "__main__":
                     if venue not in fails:
                         fails[venue] = []
                     fails[venue].append(year)
-                    dump(fails, file)
+                    dump({"venuetype":config["venuetype"],"venues":fails}, file)
 
         scraper.log("="*100)
