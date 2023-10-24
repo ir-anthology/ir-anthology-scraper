@@ -1,70 +1,172 @@
+from unicodedata import normalize
 import bibtexparser
 from getpass import getuser
 from datetime import datetime
 from shutil import copyfile
 from glob import glob
+from json import loads
 from os.path import dirname, exists, sep
 from csv import writer
 from os import makedirs
 from tqdm import tqdm
+from pprint import pprint
+import matplotlib.pyplot as plt
+
+def normalize_to_ascii(string):
+    ascii_string = "".join([normalize("NFD",character).encode("ASCII","ignore").decode("ASCII") for character in string])
+    return "".join([character for character in ascii_string if character in "abcdefghijklmnopqrstuvwxyz"])
 
 ir_anthology_root = "../" #"/media/" + getuser() + "/Ceph/data-in-production/ir-anthology/"
 
-now = datetime.now()
-start = (str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + "_" +
-         str(now.hour) + "-" + str(now.minute))
-
-venuetype = ["conferences","journals"][1]
-
-log_file_path = "copy_pdfs_" + venuetype + "_" + start + ".csv"
-
-bibfilepaths = sorted(glob(ir_anthology_root + venuetype + "/*/*/*.bib"))
-
-entry_count = 0
-pdf_count = 0
-
 DRY_RUN = True
 
-# CSV FORMAT: VENUE, YEAR, BIBKEY, DOI, WLGC, WCSP15
+for venuetype in ["conferences","journals"]:
 
-for bibfilepath in tqdm(bibfilepaths, total=len(bibfilepaths)):
-    with open(bibfilepath) as bibfile:
-            
-        entries = bibtexparser.load(bibfile).entries
-        
-        for entry in entries:
-            entry_count += 1
+    now = datetime.now()
+    start = (str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + "_" +
+             str(now.hour) + "-" + (str(now.minute).rjust(2,"0")))
 
-            ID = entry["ID"].split("-", 2)
-            
-            venue = ID[0]
-            year = ID[1]
-            
-            pdf_dst_path = dirname(bibfilepath) + sep + entry["ID"] + ".pdf"
-                
-            if "doi" in entry:
-                
-                pdf_src_path_wlgc = ir_anthology_root + "sources/wlgc/papers-by-doi/" + entry["doi"] + ".pdf"
-                
-                if exists(pdf_src_path_wlgc):
-                    wlgc = True
-                    if not exists(pdf_dst_path):
-                        if not DRY_RUN:
-                            copyfile(pdf_src_path_wlgc, pdf_dst_path)
-                else:
-                    wlgc = False
+    csv_filepath = "copy_pdfs_" + start + "_" + venuetype + ".csv"
 
-                if True in [wlgc]:
-                    pdf_count += 1
-                    
-                with open(log_file_path, "a") as csv_file:
-                    csv_writer = writer(csv_file, delimiter=",")
-                    csv_writer.writerow([entry_count, venue, year, entry["ID"], entry["doi"], "wlgc" if wlgc else "", ""])
-            else:
-                with open(log_file_path, "a") as csv_file:
-                    csv_writer = writer(csv_file, delimiter=",")
-                    csv_writer.writerow([entry_count, venue, year, entry["ID"], "", "", ""])
+    bibfilepaths = sorted(glob(ir_anthology_root + venuetype + "/*/*/*.bib"))
+
+    wcsp15_doi_path_mapping = {}
+    with open("resources/wcsp15-doi-path-mapping.txt") as file:
+        for line in file:
+            doi,path = loads(line)
+            wcsp15_doi_path_mapping[doi] = path
+
+    wcsp15_title_path_mapping = {}
+    with open("resources/wcsp15-longtitle-path-mapping.txt") as file:
+        for line in file:
+            title,path,author,year = loads(line)
+            wcsp15_title_path_mapping[title.lower()] = [path, author, year]
+
+    entry_count = 0
+    doi_count = 0
+    pdf_count = 0
+    source_count = {}
+
+    years_of_entries_not_found_by_doi = {}
+##    if exists("years_of_entries_not_found_by_doi_" + venuetype + ".txt"):
+##        with open("years_of_entries_not_found_by_doi_" + venuetype + ".txt") as file:
+##            for line in file:
+##                year,count = line.strip().split(",")
+##                years_of_entries_not_found_by_doi[int(year)] = int(count)
+##        print(venuetype)
+##        years = list(range(1960,2024))
+##        plt.figure().set_figwidth(12)
+##        plt.xticks(years, rotation='vertical')
+##        plt.title(venuetype.title() + " - Entries not Found by DOI")
+##        plt.bar(years, [years_of_entries_not_found_by_doi.get(year, 0) for year in years])
+##        plt.savefig("years_of_entries_not_found_by_doi_" + venuetype + ".jpg")
+##        continue    
+
+    # CSV FORMAT: VENUE, YEAR, BIBKEY, DOI, WLGC, WCSP15
+
+    for bibfilepath in tqdm(bibfilepaths, total=len(bibfilepaths)):
+        with open(bibfilepath) as bibfile:
+                
+            entries = bibtexparser.load(bibfile).entries
+            
+            for entry in entries:
+                entry_count += 1
+
+                bibkey = entry["ID"].split("-", 2)
+                title = entry["title"].lower()
+                author = normalize_to_ascii(entry["author"].strip().split(" and ")[0].strip().split(" ")[-1]) if "author" in entry else None
+                doi = entry.get("doi", None)
+                if doi:
+                    doi = doi.replace("\\", "")
+                venue = bibkey[0]
+                year = int(bibkey[1])
+                
+                pdf_dst_path = dirname(bibfilepath) + sep + entry["ID"] + ".pdf"
+                pdf_src_paths = {}
+                
+                if doi:
+
+                    doi_count += 1
+
+                    pdf_src_paths = {"acm50years": {"path": "../sources/acm50yrs/papers-by-doi/" + doi + ".pdf",
+                                                    "flag": False},
+                                     "manual/papers-by-doi": {"path": "../sources/manual/papers-by-doi/" + doi + ".pdf",
+                                                "flag": False},
+                                     "papers-by-venue/ecir/2021": {"path": "../sources/papers-by-venue/ecir/2021/" + doi + ".pdf",
+                                                                "flag": False},
+                                     "papers-by-venue/sigir/2021": {"path": "../sources/papers-by-venue/sigir/2021/" + doi + ".pdf",
+                                                                   "flag": False},
+                                     "papers-by-venue/wsdm/2021": {"path": "../sources/papers-by-venue/wsdm/2021/" + doi + ".pdf",
+                                                                "flag": False},
+                                     "papers-by-venue/www/2021": {"path": "../sources/papers-by-venue/www/2021/" + doi + ".pdf",
+                                                               "flag": False},
+                                     "wlgc": {"path": ir_anthology_root + "sources/wlgc/papers-by-doi/" + doi + ".pdf",
+                                              "flag": False},
+                                     "wcsp15-by-doi": {"path": "../sources/wcsp15-by-doi/papers-by-doi/" + doi + ".pdf",
+                                                       "flag": False},
+                                     "tmp/wcsp15 (using doi)": {"path": ir_anthology_root + wcsp15_doi_path_mapping[doi] if doi in wcsp15_doi_path_mapping else "",
+                                                                "flag": False}
+                                     }
+
+                    for source in pdf_src_paths:
+                        if exists(pdf_src_paths[source]["path"]):
+                            pdf_src_paths[source]["flag"] = True
+                            if not exists(pdf_dst_path):
+                                if not DRY_RUN:
+                                    copyfile(pdf_src_paths[source]["path"], pdf_dst_path)
+
+                if True not in [pdf_src_paths[source]["flag"] for source in pdf_src_paths]:
+
+                    if year not in years_of_entries_not_found_by_doi:
+                        years_of_entries_not_found_by_doi[year] = 0
+                    years_of_entries_not_found_by_doi[year] += 1
+
+                    if title in wcsp15_title_path_mapping:
                         
-with open("copy_pdfs_" + venuetype + "_" + start + ".txt", "w") as logfile:
-    logfile.write("\nPDFs: " + str(pdf_count) + "\n")
-    logfile.write("PDFs: " + str(entry_count) + "\n")
+                        wscp_author = normalize_to_ascii(wcsp15_title_path_mapping[title][1])
+                        wscp_year = int(wcsp15_title_path_mapping[title][2])
+                    
+                        pdf_src_path_wcsp_per_title = ir_anthology_root + wcsp15_title_path_mapping[title][0]
+
+                        if exists(pdf_src_path_wcsp_per_title):
+                            if (author == wscp_author and
+                                year == wscp_year):
+                                pdf_src_paths["tmp/wcsp15 (using title if no doi)"] = {"path": pdf_src_path_wcsp_per_title,
+                                                                                       "flag": True}
+                                if not exists(pdf_dst_path):
+                                    if not DRY_RUN:
+                                        copyfile(pdf_src_path_wcsp_per_doi, pdf_dst_path)
+                                        
+                            else:
+                                with open(csv_filepath.replace(".csv", "_errors.csv"), "a") as error_csv_file:
+                                    csv_writer = writer(error_csv_file, delimiter=",")
+                                    csv_writer.writerow([entry["ID"], title, author, wscp_author, year, wscp_year])
+
+                if True in [pdf_src_paths[source]["flag"] for source in pdf_src_paths]:
+                    pdf_count += 1
+                    for source in pdf_src_paths:
+                        if pdf_src_paths[source]["flag"]:
+                            if source not in source_count:
+                                source_count[source] = 0
+                            source_count[source] += 1
+                else:
+                    if doi:
+                        with open("dois_of_missing_pdfs.txt", "a") as file:
+                            file.write(venue + "," + str(year) + "," + doi + "\n")
+
+                with open(csv_filepath, "a") as csv_file:
+                    csv_writer = writer(csv_file, delimiter=",")
+                    csv_writer.writerow([venue, year, entry["ID"], entry["title"], entry.get("doi", "")] +
+                                        [source if pdf_src_paths[source]["flag"] else "" for source in pdf_src_paths])
+
+    with open("years_of_entries_not_found_by_doi_" + venuetype + ".txt", "w") as file:
+        for year,count in years_of_entries_not_found_by_doi.items():
+            file.write(str(year) + "," + str(count) + "\n")
+                            
+    with open("copy_pdfs_" + start + "_" + venuetype + ".txt", "w") as logfile:
+        logfile.write("Entries: " + str(entry_count) + "\n")
+        logfile.write("with DOI: " + str(doi_count) + "\n")
+        logfile.write("with PDF: " + str(pdf_count) + "\n")
+        for source,count in source_count.items():
+            logfile.write(source + ": " + str(count) + "\n")
+        
