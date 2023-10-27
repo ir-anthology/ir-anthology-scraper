@@ -1,6 +1,6 @@
 import requests
 import json
-from os.path import exists, sep
+from os.path import exists
 from os import makedirs
 from time import sleep
 from copy import deepcopy
@@ -139,7 +139,7 @@ class DBLPscraper:
         sleep(3)
         return response.text.strip() + self.bibtex_padding
 
-    def generate_bibtex_string(self, entry_list, bibtex_list):
+    def generate_bibtex_string(self, entry_list, bibtex_list, venuetype):
         """
         Generate a string of bibtex entries from a list of entries as provided by the
         dblp API and a list of bibtex string as provided and scraped from the dblp website.
@@ -149,6 +149,7 @@ class DBLPscraper:
         Args:
             entry_list: List of entries-as-dictionaries.
             bibtex_list: List of bibtex string.
+            venuetype: Type of venue, either 'conf' or 'journals'.
         Returns:
             A string of bibtex entries which have been formatted.
         """
@@ -273,7 +274,7 @@ class DBLPscraper:
                                     "  editorid     = " + editorid_string)
 
         # GENERATE IR-ANTHOLOGY BIBKEYS
-        ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry) for entry in entry_list])
+        ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry, venuetype) for entry in entry_list])
 
         # REPLACE DBLP BIBKEY WITH IR-ANTHOLOGY BIBKEYS
         for bibtex_lines, dblp_bibkey, ir_anthology_bibkey in zip(bibtex_lines_list, dblp_bibkeys, ir_anthology_bibkeys):
@@ -313,7 +314,7 @@ class DBLPscraper:
             bibtex_lines: List of bibtex lines.
         Returns:
             A bibtex entry.
-        """  
+        """
         STRING = bibtex_lines[0]
         for line in bibtex_lines[1:-2]:
             STRING += ("\n" + line + ("," if not line.endswith(",") else "")) if line else ""
@@ -368,18 +369,20 @@ class DBLPscraper:
         """
         return "DBLP" + ":" + entry["info"]["key"]
     
-    def _get_ir_anthology_bibkey_from_entry(self, entry):
+    def _get_ir_anthology_bibkey_from_entry(self, entry, venuetype):
         """
         Generate IR-Anthology bibkey from entry with the format
         [VENUE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index]
 
         Args:
             entry: Entry-as-dictionary as provided by the dblp API.
+            venuetype: Type of venue, either 'conf' or 'journals'.
         Returns:
             String representation of the IR-Anthology bibkey of this entry.
         """
         last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
-        return "-".join([entry["info"].get("key").split("/")[1].lower(),
+        return "-".join([{"conf":"conf","journals":"jrnl"}[venuetype],
+                         entry["info"].get("key").split("/")[1].lower(),
                          entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
 

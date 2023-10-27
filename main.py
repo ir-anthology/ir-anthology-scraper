@@ -13,9 +13,9 @@ def write_bibtex_string_to_file(bibtex_string, output_filepath):
 
 if __name__ == "__main__":
 
-    scraper = DBLPscraper("output/journals-failed")
+    scraper = DBLPscraper("output/conferences")
 
-    with open("output/journals/failed.json") as file:
+    with open("output/conferences/config.json") as file:
         config = load(file)
         
     fails = {}
@@ -50,7 +50,7 @@ if __name__ == "__main__":
                             with open(bibtex_cache_filepath, "a") as file:
                                 file.write(dumps([entry["info"]["url"],bibtex]) + "\n")
                             bibtex_list.append(bibtex)
-                    bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list)
+                    bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list, config["venuetype"])
 
                     conference_year_directory = scraper.output_directory + sep + venue + sep + str(year)
 

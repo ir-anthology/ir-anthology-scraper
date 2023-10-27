@@ -8,6 +8,19 @@
 
 "url":"URL#1113059"
 
+},
+
+{
+
+"@score":"2",
+
+"@id":"1183812",
+
+"info":{"authors":{"author":[{"@pid":"38/2451-1","text":"Fernando Diaz 0001"},{"@pid":"04/4087","text":"Chirag Shah"},{"@pid":"s/TorstenSuel","text":"Torsten Suel"},{"@pid":"c/PabloCastells","text":"Pablo Castells"},{"@pid":"40/5446","text":"Rosie Jones"},{"@pid":"18/6321","text":"Tetsuya Sakai"}]},"title":"SIGIR &apos;21: The 44th International ACM SIGIR Conference on Research and Development in Information Retrieval, Virtual Event, Canada, July 11-15, 2021","venue":"SIGIR","publisher":"ACM","year":"2021","type":"Editorship","key":"conf/sigir/2021","doi":"10.1145/3404835","ee":"https://doi.org/10.1145/3404835","url":"https://dblp.org/rec/conf/sigir/2021"},
+
+"url":"URL#1183812"
+
 }
+
 
 ]
