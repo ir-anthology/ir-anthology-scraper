@@ -258,7 +258,7 @@ class DBLPscraper:
                                                                    "text":"PERSONTEXTERROR"}]} 
 
             if not editor and editor_string:
-                bibtex_lines.insert(1,
+                bibtex_lines.insert(2 if author else 1,
                                     "  editor       = " + editor_string)
                 editor = True
             if not author and author_string:
