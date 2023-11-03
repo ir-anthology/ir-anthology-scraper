@@ -181,7 +181,7 @@ for venuetype in ["conf","jrnl"]:
                     csv_writer.writerow([venue, year, entry["ID"], entry["title"], entry.get("doi", "n/a")] +
                                         ([source if pdf_src_paths[source]["flag"] else "-" for source in pdf_src_paths] if pdf_src_paths else ["-"]*(6 if USE_TITLE else 5)))
 
-                if not exists(pdf_dst_path):
+                if True not in [pdf_src_paths[source]["flag"] for source in pdf_src_paths]:
                     with open(output_directory + sep + result_csv_filename_missing, "a") as result_csv_file:
                         csv_writer = writer(result_csv_file, delimiter=",")
                         csv_writer.writerow([doi if doi else "n/a", entry["title"], entry["author"], entry["ID"] + ".pdf", ("https://www.doi.org/" + doi) if doi else "n/a"])
