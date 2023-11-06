@@ -1,4 +1,3 @@
-from unicodedata import normalize
 import bibtexparser
 from datetime import datetime
 from shutil import copyfile
@@ -10,10 +9,26 @@ from csv import reader, writer
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
+from utils.utils import normalize_to_ascii
 
-def normalize_to_ascii(string):
-    ascii_string = "".join([normalize("NFD",character).encode("ASCII","ignore").decode("ASCII") for character in string])
+
+def normalize_name_to_ascii(string):
+    ascii_string = "".join([normalize_to_ascii(character) for character in string])
     return "".join([character for character in ascii_string if character in "abcdefghijklmnopqrstuvwxyz"])
+
+def normalize_title_to_ascii(string):
+    """
+    Format string to ASCII.
+
+    Args:
+        entry: A string.
+    Returns:
+        ASCII-formatted version of the input string.
+    """
+    return "".join([normalize_to_ascii(character) for character in string if character.isalpha() or character == " "])
+
+def convert_title_to_filename(title):
+     return normalize_title_to_ascii(title).replace(" ", "_").lower()
 
 def generate_overview(result_csv_filepath):
     overview = {}
@@ -21,17 +36,14 @@ def generate_overview(result_csv_filepath):
     with open(result_csv_filepath) as file:
         csvreader = reader(file, delimiter = ",")
         for row in csvreader:
-            if len(row) == 11:
-                venue, year, bibkey, title, doi, s1, s2, s3, s4, s5, s6 = row
-            else:
-                venue, year, bibkey, title, doi, s1, s2, s3, s4, s5 = row
+            venue, year, bibkey, title, doi, sources = row
             if doi:
                 if venue not in overview:
                     overview[venue] = {}
                 if year not in overview[venue]:
                     overview[venue][year] = [0,0]
                 overview[venue][year][1] += 1
-                if set([s1, s2, s3, s4, s5, s6] if len(row) == 11 else [s1, s2, s3, s4, s5]) != {"-"}:
+                if sources != []:
                     overview[venue][year][0] += 1
 
     with open(result_csv_filepath.replace(".csv", "_doi_pdf_ratio.csv"), "w") as file:
@@ -81,8 +93,10 @@ for venuetype in ["conf","jrnl"]:
     wcsp15_title_path_mapping = {}
     with open("resources/wcsp15-longtitle-path-mapping.txt") as file:
         for line in file:
-            title,path,author,year = loads(line)
-            wcsp15_title_path_mapping[title.lower()] = [path, author, year]
+            title_lowered,path,author,year = loads(line)
+            wcsp15_title_path_mapping[title_lowered.lower()] = {"path":path,
+                                                        "author":author,
+                                                        "year":year}
 
     entry_count = 0
     doi_count = 0
@@ -105,8 +119,9 @@ for venuetype in ["conf","jrnl"]:
                 entry_count += 1
 
                 bibkey = entry["ID"].split("-", 3)
-                title = entry["title"].lower()
-                author = normalize_to_ascii(entry["author"].strip().split(" and ")[0].strip().split(" ")[-1]) if "author" in entry else None
+                title_lowered = entry["title"].lower()
+                title_as_filename = convert_title_to_filename(entry["title"])
+                author = normalize_name_to_ascii(entry["author"].strip().split(" and ")[0].strip().split(" ")[-1]) if "author" in entry else None
                 doi = entry.get("doi", None)
                 if doi:
                     doi = doi.replace("\\", "")
@@ -123,11 +138,16 @@ for venuetype in ["conf","jrnl"]:
                                                     "flag": False},
                                      "papers-by-venue": {"path": "../sources/papers-by-venue/" + venue + "/" + str(year) + "/" + doi + ".pdf",
                                                          "flag": False},
-                                     "proceedings-by-venue": {"path": "../sources/proceedings-by-venue/" + venue + "/" + str(year) + "/" + doi + ".pdf",
-                                                              "flag": False},
+                                     "papers-by-venue-extracted-by-doi": {"path": "../sources/papers-by-venue-extracted-by-doi/" + 
+                                                                          venue + "/" + str(year) + "/" + doi + ".pdf",
+                                                                          "flag": False},
+                                     "papers-by-venue-extracted-by-title": {"path": "../sources/papers-by-venue-extracted-by-title/" + 
+                                                                            venue + "/" + str(year) + "/" + title_as_filename + ".pdf",
+                                                                            "flag": False},                                     
                                      "wlgc": {"path": "../sources/wlgc/papers-by-doi/" + doi + ".pdf",
                                               "flag": False},
-                                     "wcsp15 (using doi)": {"path": ("../sources/" + wcsp15_doi_path_mapping[doi]) if doi in wcsp15_doi_path_mapping else None,
+                                     "wcsp15 (using doi)": {"path": ("../sources/" + wcsp15_doi_path_mapping[doi]) 
+                                                            if doi in wcsp15_doi_path_mapping else None,
                                                             "flag": False}
                                      }
 
@@ -144,25 +164,24 @@ for venuetype in ["conf","jrnl"]:
                         years_of_entries_not_found_by_doi[year] = 0
                     years_of_entries_not_found_by_doi[year] += 1
 
-                    if title in wcsp15_title_path_mapping:
+                    if title_lowered in wcsp15_title_path_mapping:
                         
-                        wscp_author = normalize_to_ascii(wcsp15_title_path_mapping[title][1])
-                        wscp_year = int(wcsp15_title_path_mapping[title][2])
+                        pdf_src_path_wcsp_per_title = "../sources/" + wcsp15_title_path_mapping[title_lowered]["path"]
+                        wscp_author = normalize_name_to_ascii(wcsp15_title_path_mapping[title_lowered]["author"])
+                        wscp_year = int(wcsp15_title_path_mapping[title_lowered]["year"])
                     
-                        pdf_src_path_wcsp_per_title = "../sources/" + wcsp15_title_path_mapping[title][0]
-
                         if USE_TITLE and exists(pdf_src_path_wcsp_per_title):
                             if (author == wscp_author and
                                 year == wscp_year):
-                                pdf_src_paths["wcsp15 (using title if no doi)"] = {"path": pdf_src_path_wcsp_per_title,
-                                                                                   "flag": True}
+                                pdf_src_paths["wcsp15 (using title)"] = {"path": pdf_src_path_wcsp_per_title,
+                                                                         "flag": True}
                                 if OVERWRITE_EXISTING or not exists(pdf_dst_path):
                                     if not DRY_RUN:
                                         copyfile(pdf_src_path_wcsp_per_title, pdf_dst_path)
                             else:
                                 with open(output_directory + sep + error_cvs_filename, "a") as error_csv_file:
                                     csv_writer = writer(error_csv_file, delimiter=",")
-                                    csv_writer.writerow([entry["ID"], title, author, wscp_author, year, wscp_year])
+                                    csv_writer.writerow([entry["ID"], title_lowered, author, wscp_author, year, wscp_year])
 
                 if True in [pdf_src_paths[source]["flag"] for source in pdf_src_paths]:
                     pdf_count += 1
@@ -178,8 +197,8 @@ for venuetype in ["conf","jrnl"]:
 
                 with open(output_directory + sep + result_csv_filename, "a") as result_csv_file:
                     csv_writer = writer(result_csv_file, delimiter=",")
-                    csv_writer.writerow([venue, year, entry["ID"], entry["title"], entry.get("doi", "n/a")] +
-                                        ([source if pdf_src_paths[source]["flag"] else "-" for source in pdf_src_paths] if pdf_src_paths else ["-"]*(6 if USE_TITLE else 5)))
+                    sources = [source for source in pdf_src_paths if pdf_src_paths[source]["flag"]]
+                    csv_writer.writerow([venue, year, entry["ID"], entry["title"], entry.get("doi", "n/a"), sources])
 
                 if True not in [pdf_src_paths[source]["flag"] for source in pdf_src_paths]:
                     with open(output_directory + sep + result_csv_filename_missing, "a") as result_csv_file:
@@ -193,7 +212,7 @@ for venuetype in ["conf","jrnl"]:
         for source,count in source_count.items():
             logfile.write(source + ": " + str(count) + "\n")
 
-    generate_overview(output_directory + sep + result_csv_filename)
+    #generate_overview(output_directory + sep + result_csv_filename)
     write_years_not_found_by_dois(years_of_entries_not_found_by_doi, output_directory, venuetype)
     plot_years_not_found_by_dois(years_of_entries_not_found_by_doi, output_directory, venuetype)
         
