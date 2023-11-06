@@ -4,8 +4,8 @@ from os.path import exists
 from os import makedirs
 from time import sleep
 from copy import deepcopy
-from unicodedata import normalize
 from datetime import datetime
+from utils.utils import normalize_to_ascii
 from re import search
 
 
@@ -409,8 +409,6 @@ class DBLPscraper:
                                   .lower())
 
     def _convert_name(self, string):
-        def normalize_to_ascii(character):
-            return normalize("NFD",character).encode("ASCII","ignore").decode("ASCII")
         """
         Format string to ASCII.
 
