@@ -70,7 +70,7 @@ for venuetype in ["conf","jrnl"]:
     result_csv_filename_missing = "copy_pdfs_" + start + "_" + venuetype + "_missing.csv"
     error_cvs_filename = "copy_pdfs_" + start + "_" + venuetype + "_error.csv"
 
-    bibfilepaths = sorted(glob("../" + venuetype + "/*/*/*.bib"))
+    bibfile_paths = sorted(glob("../" + venuetype + "/*/*/*.bib"))
 
     wcsp15_doi_path_mapping = {}
     with open("resources/wcsp15-doi-path-mapping.txt") as file:
@@ -92,8 +92,8 @@ for venuetype in ["conf","jrnl"]:
 
     # CSV FORMAT: VENUE, YEAR, BIBKEY, DOI, acm50years, papers-by-venue, proceedings-by-venue, wlgc, wcsp15 (using doi), (wcsp15 (using title))
 
-    for bibfilepath in tqdm(bibfilepaths, total=len(bibfilepaths)):
-        with open(bibfilepath) as bibfile:
+    for bibfile_path in tqdm(bibfile_paths, total=len(bibfile_paths)):
+        with open(bibfile_path) as bibfile:
                 
             entries = bibtexparser.load(bibfile).entries
             
@@ -113,7 +113,7 @@ for venuetype in ["conf","jrnl"]:
                 venue = bibkey[1]
                 year = int(bibkey[2])
                 
-                pdf_dst_path = dirname(bibfilepath) + sep + entry["ID"] + ".pdf"
+                pdf_dst_path = dirname(bibfile_path) + sep + entry["ID"] + ".pdf"
                 pdf_src_paths = {}
                 
                 if doi:
