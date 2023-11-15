@@ -1,4 +1,4 @@
-from pprint import pprint
+from collections import defaultdict
 import bibtexparser
 from datetime import datetime
 from shutil import copyfile
@@ -42,10 +42,7 @@ class PDFcopier:
                 
     def sources(self, title, first_author, doi, venue, year):
         def check_path(path):
-            if exists(path):
-                return path
-            else:
-                return None
+            return path if exists(path) else None
 
         title_lowered = title.lower()  
         title_as_filename = self.convert_title_to_filename(title)
@@ -66,12 +63,10 @@ class PDFcopier:
     
     def bibliography(self, entry):
         bibkey = entry["ID"]
-        bibkey_split = bibkey.split("-", 3)
         title = entry["title"]
-        first_author = self.normalize_name_to_ascii(entry["author"].strip().split(" and ")[0].strip().split(" ")[-1]) if "author" in entry else None
-        doi = entry.get("doi", None)
-        if doi:
-            doi = doi.replace("\\", "")
+        first_author = self.normalize_name_to_ascii(self.get_first_author(entry)) if "author" in entry else None
+        doi = entry["doi"].replace("\\", "") if "doi" in entry else None
+        bibkey_split = bibkey.split("-", 3)
         venue = bibkey_split[1]
         year = int(bibkey_split[2])
         return bibkey, title, first_author, doi, venue, year
@@ -81,20 +76,19 @@ class PDFcopier:
         results_txt_filename = "copy_pdfs_" + self.start + "_" + venuetype + ".txt"
         results_csv_filename = "copy_pdfs_" + self.start + "_" + venuetype + ".csv"
         missing_csv_filename = "copy_pdfs_" + self.start + "_" + venuetype + "_missing.csv"
-        #error_cvs_filename = "copy_pdfs_" + self.start + "_" + venuetype + "_error.csv"
     
         entry_count = 0
         doi_count = 0
         pdf_count = 0
-        source_count = {}
-        years_of_entries_not_found_by_doi = {}
-        pdf_ratio_per_venue_and_year = {}
+        source_count = defaultdict(lambda: 0)
+        years_of_entries_not_found_by_doi = defaultdict(lambda: 0)
+        pdf_ratio_per_venue_and_year = defaultdict(lambda: defaultdict(lambda: [0,0]))
 
         # CSV FORMAT: VENUE, YEAR, BIBKEY, DOI, SOURCES
         results = []
         missing = []
 
-        duplicates = {}
+        duplicates = defaultdict(lambda: [])
 
         for bibfile_path in tqdm(bibfile_paths, total=len(bibfile_paths)):
             with open(bibfile_path) as bibfile:
@@ -105,24 +99,18 @@ class PDFcopier:
                     
                     if entry["ENTRYTYPE"] == "proceedings":
                         continue
+                    
+                    bibkey, title, first_author, doi, venue, year = self.bibliography(entry)
 
                     entry_count += 1
-
-                    bibkey, title, first_author, doi, venue, year = self.bibliography(entry)
                     doi_count += 1 if doi else 0
 
-                    if venue not in pdf_ratio_per_venue_and_year:
-                        pdf_ratio_per_venue_and_year[venue] = {}
-                    if year not in pdf_ratio_per_venue_and_year[venue]:
-                        pdf_ratio_per_venue_and_year[venue][year] = [0,0]
                     pdf_ratio_per_venue_and_year[venue][year][1] += 1
                     
                     pdf_dst_path = dirname(bibfile_path) + sep + entry["ID"] + ".pdf"
                     pdf_src_paths = self.sources(title, first_author, doi, venue, year)
 
                     if pdf_src_paths["by_title"]["papers-by-venue-extracted-by-title"]:
-                        if title not in duplicates:
-                            duplicates[title] = []
                         duplicates[title].append(entry) 
                     
                     for source_path in pdf_src_paths["by_doi"]:
@@ -132,9 +120,7 @@ class PDFcopier:
                                     copyfile(pdf_src_paths["by_doi"][source_path], pdf_dst_path)
                                     break
                     else:
-                        if year not in years_of_entries_not_found_by_doi:
-                            years_of_entries_not_found_by_doi[year] = 0
-                        years_of_entries_not_found_by_doi[year] += 1              
+                        years_of_entries_not_found_by_doi[year] += 1
                         
                         for source_path in pdf_src_paths["by_title"]:
                             if not self.dry_run:
@@ -142,11 +128,8 @@ class PDFcopier:
                                     if self.overwrite_existing or not exists(pdf_dst_path):
                                         copyfile(pdf_src_paths["by_title"][source_path], pdf_dst_path)
                                         break
-                                    #with open(self.output_directory + sep + self.error_cvs_filename, "a") as error_csv_file:
-                                    #    csv_writer = writer(error_csv_file, delimiter=",")
-                                    #    csv_writer.writerow([entry["ID"], title_lowered, author, wscp_author, year, wscp_year])
 
-                    if set(pdf_src_paths["by_doi"].values()).union(set(pdf_src_paths["by_title"].values())) != {None}:                                                
+                    if set(pdf_src_paths["by_doi"].values()).union(set(pdf_src_paths["by_title"].values())) != {None} or exists(pdf_dst_path):                                                
                         pdf_count += 1
                         pdf_ratio_per_venue_and_year[venue][year][0] += 1
                     else:
@@ -155,8 +138,6 @@ class PDFcopier:
                     for source_type in pdf_src_paths:
                         for source_path in pdf_src_paths[source_type]:
                             if pdf_src_paths[source_type][source_path]:
-                                if source_path not in source_count:
-                                    source_count[source_path] = 0
                                 source_count[source_path] += 1
 
                     sources = ([source for source in pdf_src_paths["by_doi"] if pdf_src_paths["by_doi"][source]] +
@@ -186,7 +167,7 @@ class PDFcopier:
             for source_path,count in source_count.items():
                 logfile.write(source_path + ": " + str(count) + "\n")
 
-        with open("duplicates" + "_" + venuetype + ".json", "w") as file:
+        with open("duplicates" + "_" + venuetype + "_2.json", "w") as file:
             dump({title:duplicates[title] for title in duplicates if len(duplicates[title]) > 1}, file)
 
         self.generate_pdf_ratio_overview(pdf_ratio_per_venue_and_year, venuetype)
@@ -207,6 +188,9 @@ class PDFcopier:
             ASCII-formatted version of the input string.
         """
         return "".join([normalize_to_ascii(character) for character in string if character.isalpha() or character == " "])
+    
+    def get_first_author(self, entry):
+        return entry["author"].strip().split(" and ")[0].strip().split(" ")[-1]
 
     def convert_title_to_filename(self, title):
         return self.normalize_title_to_ascii(title).replace(" ", "_").lower()
