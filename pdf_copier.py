@@ -216,10 +216,13 @@ class PDFcopier:
         plt.bar(years, [years_of_entries_not_found_by_doi.get(year, 0) for year in years])
         plt.savefig(self.output_directory + sep + "years_of_entries_not_found_by_doi_" + venuetype + ".jpg")
 
-pdf_copier = PDFcopier(use_title=True, dry_run=True, overwrite_existing=False)
 
-for venuetype in ["conf","jrnl"]:
-    pdf_copier.run(venuetype)   
+if __name__ == "__main__":
+    
+    pdf_copier = PDFcopier(use_title=True, dry_run=True, overwrite_existing=False)
+
+    for venuetype in ["conf","jrnl"]:
+        pdf_copier.run(venuetype)   
 
     
         
