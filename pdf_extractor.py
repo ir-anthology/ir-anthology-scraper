@@ -40,9 +40,9 @@ class PDFextractor:
             return None
 
     def extract(self, venue, year, test):
-        proceedings_pdf_filepaths = glob("../sources/proceedings-by-venue" + sep + 
-                                        venue + sep + year + sep + 
-                                        venue + "-" + year + "-" + "proceedings" + "*.pdf")
+        proceedings_pdf_filepaths = sorted(glob("../sources/proceedings-by-venue" + sep + 
+                                                venue + sep + year + sep + 
+                                                venue + "-" + year + "-" + "proceedings" + "*.pdf"))
         bibfile_path = ("../conf" + sep +
                         venue + sep + year + sep + 
                         "conf" + "-" + venue + "-" + year + ".bib")
@@ -58,6 +58,14 @@ class PDFextractor:
         entries_found_by_title = {}
 
         for proceeding_pdf_filepath in proceedings_pdf_filepaths:
+            proceedings_offset_filepath = proceeding_pdf_filepath[:-3] + "txt"
+            if not exists(proceedings_offset_filepath):
+                with open(self.log_file) as logfile:
+                    logfile.write("Proceedings file " + proceeding_pdf_filepath + " without offset file. Setting offset to 0.")
+                    offset = 0
+            else:
+                with open(proceedings_offset_filepath) as txt:
+                    offset = int(txt.readline().strip())
             with fitz.open(proceeding_pdf_filepath) as pdf:
                 for page_number, page in enumerate(pdf.pages()):
                     page_text = page.get_text().replace("\n", " ")
@@ -74,16 +82,17 @@ class PDFextractor:
                                                                 proceeding_pdf_filepath, 
                                                                 page_number, page_number+pages]
                             elif (title.lower() in page_text_preprocessed and
-                                False not in [author_lowered in page_text_preprocessed for author_lowered in authors_lowered] and
-                                not page_number <= first_page):
+                                  "abstract" in page_text_preprocessed and
+                                  False not in [author_lowered in page_text_preprocessed for author_lowered in authors_lowered] and
+                                  page_number > first_page + offset - 10):
                                 entries_found_by_title[bibkey] = [title_as_filename,
                                                                   proceeding_pdf_filepath, 
                                                                   page_number, page_number+pages]
                                 
         for entries_found, output_directory in [[entries_found_by_doi,
-                                                 "../sources/papers-by-venue-extracted-by-doi" + ("-test" if test else "")],
+                                                 "../sources/papers-by-venue-extracted-by-doi" + ("-test-2" if test else "")],
                                                 [entries_found_by_title,
-                                                 "../sources/papers-by-venue-extracted-by-title" + ("-test" if test else "")]]:
+                                                 "../sources/papers-by-venue-extracted-by-title" + ("-test-2" if test else "")]]:
             for bibkey, values in entries_found.items():
                 doi_or_title_as_pathname, proceeding_pdf_filepath, from_page, to_page = values
                 with fitz.open(proceeding_pdf_filepath) as pdf:
