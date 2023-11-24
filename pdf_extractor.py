@@ -1,11 +1,12 @@
+import csv
 from datetime import datetime
-from pprint import pprint
 from re import sub
+from time import sleep
 import fitz
 import bibtexparser
 from glob import glob
 from os.path import dirname, exists, sep
-from os import makedirs
+from os import makedirs, system
 from utils.utils import normalize_to_ascii
 
 class PDFextractor:
@@ -23,23 +24,53 @@ class PDFextractor:
     def bibliography(self, entry):
         bibkey, title, authors, doi, pages = (entry["ID"], 
                                               entry["title"], 
-                                              entry.get("author", None),
+                                              entry.get("author", []),
                                               entry.get("doi", None), 
                                               entry.get("pages"))
-        first_page = self.get_first_page(pages)
+        title_as_filename = self.convert_title_to_filename(title)
+        last_names_of_authors = [self.normalize_name_to_ascii(author.split(" ")[-1]) for author in authors.split(" and ")]
         page_count = self.get_page_count(pages)
-        if self.get_first_page(pages) != None and self.get_page_count(pages) != None and authors:
-            return (bibkey, 
-                    title,
-                    self.convert_title_to_filename(title),
-                    [self.normalize_name_to_ascii(author.split(" ")[-1]) for author in authors.split(" and ")],
-                    doi,
-                    first_page,
-                    page_count)
+        if self.get_page_count(pages) != None:
+            return (bibkey, title, title_as_filename, authors, last_names_of_authors, doi, page_count)
         else:
             return None
+        
+    def check_page(self, page_text, title, authors, doi):
+        system("clear")
+        print(self.blue("TITLE: " + title))
+        print(self.green("AUTHORS: " + ", ".join([author for author in authors])))
+        print(self.yellow("DOI: " + (doi if doi else "-")))
+        print()
+        edited_page_text = sub(title.replace(" ", "[ \n]"), self.blue(title), page_text)
+        if doi:
+            edited_page_text = edited_page_text.replace(doi, self.yellow(doi))
+        for author in authors:
+            edited_page_text = edited_page_text.replace(author, self.green(author))
+        edited_page_text = edited_page_text.replace("Introduction", self.red("Introduction"))
+        edited_page_text = edited_page_text.replace("Abstract", self.red("Abstract"))
+        print(edited_page_text.strip())
+        print()
+        check = None
+        while check not in ["y", "n", "i"]:
+            check = input("Enter 'y' if correct; enter 'n' if wrong paper; enter 'i' if table of content, reference page, etc to skip page. ")
+        return check
+
+    def yellow(self, string):
+        return "\033[1;33m" + string + "\033[1;m"
+
+    def green(self, string):
+        return "\033[1;32m" + string + "\033[1;m"
+
+    def red(self, string):
+        return "\033[1;31m" + string + "\033[1;m"
+
+    def blue(self, string):
+        return "\033[1;34m" + string + "\033[1;m"
 
     def extract(self, venue, year, test):
+        print(venue, year)
+        sleep(1)
+        system("clear")
         proceedings_pdf_filepaths = sorted(glob("../sources/proceedings-by-venue" + sep + 
                                                 venue + sep + year + sep + 
                                                 venue + "-" + year + "-" + "proceedings" + "*.pdf"))
@@ -58,41 +89,62 @@ class PDFextractor:
         entries_found_by_title = {}
 
         for proceeding_pdf_filepath in proceedings_pdf_filepaths:
-            proceedings_offset_filepath = proceeding_pdf_filepath[:-3] + "txt"
-            if not exists(proceedings_offset_filepath):
-                with open(self.log_file) as logfile:
-                    logfile.write("Proceedings file " + proceeding_pdf_filepath + " without offset file. Setting offset to 0.")
-                    offset = 0
-            else:
-                with open(proceedings_offset_filepath) as txt:
-                    offset = int(txt.readline().strip())
+            by_doi_filepath = proceeding_pdf_filepath.replace(".pdf", "_found_by_doi.csv")
+            if exists(by_doi_filepath):
+                with open(by_doi_filepath) as by_doi_file:
+                    csv_reader = csv.reader(by_doi_file, delimiter=",")
+                    for bibkey, title, title_as_filename, authors, doi, proceeding_pdf_filepath, from_page, to_page in csv_reader:
+                        entries_found_by_doi[bibkey] = [doi, proceeding_pdf_filepath, int(from_page), int(to_page)]
+            by_title_filepath = proceeding_pdf_filepath.replace(".pdf", "_found_by_title.csv")
+            if exists(by_title_filepath):
+                with open(by_title_filepath) as by_title_file:
+                    csv_reader = csv.reader(by_title_file, delimiter=",")
+                    for bibkey, title, title_as_filename, authors, doi, proceeding_pdf_filepath, from_page, to_page in csv_reader:
+                        entries_found_by_title[bibkey] = [title_as_filename, proceeding_pdf_filepath, int(from_page), int(to_page)]
             with fitz.open(proceeding_pdf_filepath) as pdf:
                 for page_number, page in enumerate(pdf.pages()):
-                    page_text = page.get_text().replace("\n", " ")
-                    page_text_preprocessed = sub(" +", " ", page_text.lower()).replace("ﬁ","fi")
+                    page_text = page.get_text()
+                    page_text_no_linebreaks = page_text.replace("\n", " ")
+                    page_text_preprocessed = sub(" +", " ", page_text_no_linebreaks.lower()).replace("ﬁ","fi")
 
-                    for bibkey, title, title_as_filename, authors, doi, first_page, pages in entries:
-                        authors_lowered = [author.lower() for author in authors]
+                    #print("PAGE NUMBER:", page_number)
+                    for bibkey, title, title_as_filename, authors, last_names_of_authors, doi, page_count in entries:
+                        last_names_of_authors_lowered = [last_name_of_author.lower() for last_name_of_author in last_names_of_authors]
                         if bibkey not in entries_found_by_doi and bibkey not in entries_found_by_title:
                             if doi:
                                 doi = doi.replace("\\", "")
                             if (title.lower() in page_text_preprocessed and
-                                doi and doi in page_text):
-                                entries_found_by_doi[bibkey] = [doi,
-                                                                proceeding_pdf_filepath, 
-                                                                page_number, page_number+pages]
+                                doi and doi in page_text_no_linebreaks):
+                                self.check_page(page_text, title, last_names_of_authors, doi)
+                                check = self.check_page(page_text, title, last_names_of_authors, doi)
+                                if check == "y":
+                                    entries_found_by_doi[bibkey] = [doi,
+                                                                    proceeding_pdf_filepath, 
+                                                                    page_number, page_number+page_count]
+                                    with open(by_doi_filepath, "a") as by_doi_file:
+                                        csv_writer = csv.writer(by_doi_file, delimiter=",")
+                                        #bibkey, title, title_as_filename, authors, last_names_of_authors, doi, page_count
+                                        csv_writer.writerow([bibkey, title, title_as_filename, authors, doi, proceeding_pdf_filepath, page_number, page_number+page_count])
+                                else:
+                                    break
                             elif (title.lower() in page_text_preprocessed and
-                                  "abstract" in page_text_preprocessed and
-                                  False not in [author_lowered in page_text_preprocessed for author_lowered in authors_lowered] and
-                                  page_number > first_page + offset - 10):
-                                entries_found_by_title[bibkey] = [title_as_filename,
-                                                                  proceeding_pdf_filepath, 
-                                                                  page_number, page_number+pages]
+                                  False not in [last_name_of_author_lowered in page_text_preprocessed 
+                                                for last_name_of_author_lowered in last_names_of_authors_lowered]):
+                                check = self.check_page(page_text, title, last_names_of_authors, doi)
+                                if check == "y":
+                                    entries_found_by_title[bibkey] = [title_as_filename,
+                                                                      proceeding_pdf_filepath, 
+                                                                      page_number, page_number+page_count]
+                                    with open(by_title_filepath, "a") as by_title_file:
+                                        csv_writer = csv.writer(by_title_file, delimiter=",")
+                                        csv_writer.writerow([bibkey, title, title_as_filename, authors, doi, proceeding_pdf_filepath, page_number, page_number+page_count])
+                                else:
+                                    break
                                 
         for entries_found, output_directory in [[entries_found_by_doi,
-                                                 "../sources/papers-by-venue-extracted-by-doi" + ("-test-2" if test else "")],
+                                                 "../sources/papers-by-venue-extracted-by-doi" + ("-test-4" if test else "")],
                                                 [entries_found_by_title,
-                                                 "../sources/papers-by-venue-extracted-by-title" + ("-test-2" if test else "")]]:
+                                                 "../sources/papers-by-venue-extracted-by-title" + ("-test-4" if test else "")]]:
             for bibkey, values in entries_found.items():
                 doi_or_title_as_pathname, proceeding_pdf_filepath, from_page, to_page = values
                 with fitz.open(proceeding_pdf_filepath) as pdf:
@@ -103,7 +155,8 @@ class PDFextractor:
                                 doi_or_title_as_pathname + ".pdf")
                     if not exists(dirname(filepath)):
                         makedirs(dirname(filepath))
-                    paper.save(filepath)
+                    if not exists(filepath):
+                        paper.save(filepath)
 
         return len(entries_found_by_doi), len(entries_found_by_title)
 
@@ -131,14 +184,6 @@ class PDFextractor:
         except ValueError:
             return 0
         
-    def get_first_page(self, pages):
-        if not pages:
-            return None
-        try:
-            return int(pages.split("--")[0])
-        except ValueError:
-            return None
-        
     def normalize_name_to_ascii(self, string):
         return "".join([normalize_to_ascii(character) for character in string])
         
@@ -160,6 +205,6 @@ class PDFextractor:
 if __name__ == "__main__":
 
     pdf_extractor = PDFextractor("../sources/proceedings-by-venue")
-    pdf_extractor.run(test = True)
+    #pdf_extractor.run(test = True)
 
     
