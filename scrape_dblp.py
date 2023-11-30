@@ -1,6 +1,7 @@
 from scripts.dblp_scraper import DBLPscraper
-from os.path import dirname, exists, sep
+from os.path import exists, sep
 from os import makedirs
+from shutil import copyfile
 from json import dump, dumps, loads, load
 from tqdm import tqdm
 from csv import writer
@@ -13,60 +14,66 @@ def write_bibtex_string_to_file(bibtex_string, output_filepath):
 
 if __name__ == "__main__":
 
-    for venue_type_directory in ["conf","jrnl"]:
+    OUTPUT_DIRECTORY = "output"
+    CONFIG_FILEPATH = "config.json"
 
-        scraper = DBLPscraper("output/" + venue_type_directory)
+    with open(CONFIG_FILEPATH) as file:
+        config = load(file)
 
-        with open("output/" + venue_type_directory + "/config.json") as file:
-            config = load(file)
-            
-        fails = {}
+    venue_type = config["venuetype"]
 
-        bibtex_cache_filepath = scraper.output_directory + sep + "dblp_bibtex_cache.txt"
+    scraper = DBLPscraper(OUTPUT_DIRECTORY + sep + venue_type)
+
+    copyfile(CONFIG_FILEPATH, scraper.logger_directory + sep + "config.json")
         
-        bibtex_dump = {}
-        if exists(bibtex_cache_filepath):
-            with open(bibtex_cache_filepath) as file:
-                for line in file:
-                    url, bibtex = loads(line)
-                    bibtex_dump[url] = bibtex
+    fails = {}
 
-        for venue, years in config["venues"].items():
+    bibtex_cache_filepath = scraper.output_directory + sep + "dblp_bibtex_cache.txt"
+    
+    bibtex_cache = {}
+    if exists(bibtex_cache_filepath):
+        with open(bibtex_cache_filepath) as file:
+            for line in file:
+                url, bibtex = loads(line)
+                bibtex_cache[url] = bibtex
 
-            for year in years:
+    for venue, years in config["venues"].items():
 
-                try:
-                    print("Scraping bibtex entries of " + venue + " " + str(year) + "...")
-                    entry_list = scraper.scrape_venue(config["venuetype"], venue, year)
-                    with open(scraper.output_directory + sep + "dblp_json_results.csv", "a") as file:
-                        csv_writer = writer(file, delimiter=",")
-                        csv_writer.writerow([venue, year, len(entry_list)])
+        for year in years:
 
-                    if entry_list != []:
-                        bibtex_list = []
-                        for entry in tqdm(entry_list, total=len(entry_list)):
-                            try:
-                                bibtex_list.append(bibtex_dump[entry["info"]["url"]])
-                            except KeyError:
-                                bibtex = scraper.scrape_bibtex(entry)
-                                with open(bibtex_cache_filepath, "a") as file:
-                                    file.write(dumps([entry["info"]["url"],bibtex]) + "\n")
-                                bibtex_list.append(bibtex)
-                        bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list, config["venuetype"])
+            try:
+                print("Scraping bibtex entries of " + venue + " " + str(year) + "...")
+                entry_list = scraper.scrape_venue(config["venuetype"], venue, year)
+                with open(scraper.logger_directory + sep + "dblp_json_results.csv", "a") as file:
+                    csv_writer = writer(file, delimiter=",")
+                    csv_writer.writerow([venue, year, len(entry_list)])
 
-                        conference_year_directory = scraper.output_directory + sep + venue + sep + str(year)
+                if entry_list != []:
+                    bibtex_list = []
+                    for entry in tqdm(entry_list, total=len(entry_list)):
+                        try:
+                            bibtex_list.append(bibtex_cache[entry["info"]["url"]])
+                        except KeyError:
+                            bibtex = scraper.scrape_bibtex(entry)
+                            with open(bibtex_cache_filepath, "a") as file:
+                                file.write(dumps([entry["info"]["url"],bibtex]) + "\n")
+                            bibtex_list.append(bibtex)
+                    bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list, config["venuetype"])
 
-                        if not exists(conference_year_directory):
-                            makedirs(conference_year_directory)
-                        write_bibtex_string_to_file(bibtex_string,
-                                                    conference_year_directory + sep + venue_type_directory + "-" + venue + "-" + str(year) + ".bib")
+                    venue_year_directory = scraper.output_directory + sep + venue + sep + str(year)
+                    bib_filepath = venue_year_directory + sep + venue_type + "-" + venue + "-" + str(year) + ".bib"
 
-                except:
-                    scraper.log(traceback.format_exc())
-                    with open(scraper.output_directory + sep + "failed.json", "w") as file:
-                        if venue not in fails:
-                            fails[venue] = []
-                        fails[venue].append(year)
-                        dump({"venuetype":config["venuetype"],"venues":fails}, file)
+                    if not exists(venue_year_directory):
+                        makedirs(venue_year_directory)
+                    if not exists(bib_filepath):
+                        write_bibtex_string_to_file(bibtex_string, bib_filepath)
 
-            scraper.log("="*100)
+            except:
+                scraper.log(traceback.format_exc())
+                with open(scraper.output_directory + sep + "failed.json", "w") as file:
+                    if venue not in fails:
+                        fails[venue] = []
+                    fails[venue].append(year)
+                    dump({"venuetype":config["venuetype"],"venues":fails}, file)
+
+        scraper.log("="*100)

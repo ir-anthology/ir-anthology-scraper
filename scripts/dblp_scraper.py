@@ -1,6 +1,6 @@
 import requests
 import json
-from os.path import exists
+from os.path import exists, sep
 from os import makedirs
 from time import sleep
 from copy import deepcopy
@@ -16,16 +16,21 @@ class DBLPscraper:
         self.logger = self.log
         self.bibtex_padding = "\n\n\n"
         now = datetime.now()
+        self.timestamp = (str(now.year) + "_" + str(now.month) + "_" + (str(now.day).rjust(2,"0")) + "_" +
+                          str(now.hour) + "_" + str(now.minute) + "_" + (str(now.second).rjust(2,"0")))
         with open("scripts/character_map.json") as file:
             self.character_map = json.load(file)
         self.output_directory = output_directory
+        if not exists(self.output_directory):
+            makedirs(self.output_directory)
+        self.logger_directory = self.output_directory + sep + "_logs" + sep + self.timestamp
         self.logger(str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + " " +
                     str(now.hour) + ":" + str(now.minute) + ":" + (str(now.second).rjust(2,"0")))
 
     def log(self, message):
-        if not exists(self.output_directory):
-            makedirs(self.output_directory)
-        with open(self.output_directory + "/" + "log.txt", "a") as file:
+        if not exists(self.logger_directory):
+            makedirs(self.logger_directory)
+        with open(self.logger_directory + sep + "log.txt", "a") as file:
             file.write(message + "\n")
 
     def scrape_venue(self, venuetype, venue, year):
@@ -45,7 +50,7 @@ class DBLPscraper:
             raise ValueError("Invalid venue type ('conf' or 'journals').")
         self.logger("\nScraping venue " + venue + " " + str(year) + ".")
         
-        payload = {"q": ("streamid:" + venuetype + "/" + venue + ":" +
+        payload = {"q": ("streamid:" + venuetype + sep + venue + ":" +
                          "year" + ":" + str(year)),
                    "format": "json",
                    "h": "1000",
@@ -59,7 +64,7 @@ class DBLPscraper:
             self.logger(str(len(entry_list)) + " entries scraped from dblp API.")
             payload["f"] = str(int(payload["f"]) + 1000)
             
-        return [entry for entry in entry_list if entry["info"]["key"].startswith(venuetype + "/" + venue)]
+        return [entry for entry in entry_list if entry["info"]["key"].startswith(venuetype + sep + venue)]
 
     def _scrape_venue_batch(self, payload):
         """
