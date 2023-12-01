@@ -2,40 +2,27 @@ from scripts.dblp_scraper import DBLPscraper
 from os.path import exists, sep
 from os import makedirs
 from shutil import copyfile
-from json import dump, dumps, loads, load
+from json import dump, load
 from tqdm import tqdm
-from csv import writer
 import traceback
-
-def write_bibtex_string_to_file(bibtex_string, output_filepath):
-    with open(output_filepath, "w") as file:
-        file.write(bibtex_string)
 
 
 if __name__ == "__main__":
 
     OUTPUT_DIRECTORY = "output"
     CONFIG_FILEPATH = "config.json"
+    BIBTEX_CACHE_FILEPATH = "output/conf/dblp_bibtex_cache.txt"
 
     with open(CONFIG_FILEPATH) as file:
         config = load(file)
 
-    venue_type = config["venuetype"]
+    VENUETYPE = config["venuetype"]
 
-    scraper = DBLPscraper(OUTPUT_DIRECTORY + sep + venue_type)
+    scraper = DBLPscraper(VENUETYPE, OUTPUT_DIRECTORY, BIBTEX_CACHE_FILEPATH)
 
     copyfile(CONFIG_FILEPATH, scraper.logger_directory + sep + "config.json")
         
     fails = {}
-
-    bibtex_cache_filepath = scraper.output_directory + sep + "dblp_bibtex_cache.txt"
-    
-    bibtex_cache = {}
-    if exists(bibtex_cache_filepath):
-        with open(bibtex_cache_filepath) as file:
-            for line in file:
-                url, bibtex = loads(line)
-                bibtex_cache[url] = bibtex
 
     for venue, years in config["venues"].items():
 
@@ -43,30 +30,22 @@ if __name__ == "__main__":
 
             try:
                 print("Scraping bibtex entries of " + venue + " " + str(year) + "...")
-                entry_list = scraper.scrape_venue(config["venuetype"], venue, year)
-                with open(scraper.logger_directory + sep + "dblp_json_results.csv", "a") as file:
-                    csv_writer = writer(file, delimiter=",")
-                    csv_writer.writerow([venue, year, len(entry_list)])
+                entry_list = scraper.scrape_venue(venue, year)
 
                 if entry_list != []:
-                    bibtex_list = []
-                    for entry in tqdm(entry_list, total=len(entry_list)):
-                        try:
-                            bibtex_list.append(bibtex_cache[entry["info"]["url"]])
-                        except KeyError:
-                            bibtex = scraper.scrape_bibtex(entry)
-                            with open(bibtex_cache_filepath, "a") as file:
-                                file.write(dumps([entry["info"]["url"],bibtex]) + "\n")
-                            bibtex_list.append(bibtex)
-                    bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list, config["venuetype"])
+                    bibtex_list = [scraper.scrape_bibtex(entry) for entry in tqdm(entry_list, total=len(entry_list))]
+                    bibtex_string = scraper.generate_bibtex_string(entry_list, bibtex_list)
 
                     venue_year_directory = scraper.output_directory + sep + venue + sep + str(year)
-                    bib_filepath = venue_year_directory + sep + venue_type + "-" + venue + "-" + str(year) + ".bib"
+                    bib_filepath = venue_year_directory + sep + VENUETYPE + "-" + venue + "-" + str(year) + ".bib"
 
                     if not exists(venue_year_directory):
                         makedirs(venue_year_directory)
-                    if not exists(bib_filepath):
-                        write_bibtex_string_to_file(bibtex_string, bib_filepath)
+                    if exists(bib_filepath):
+                        print("Bibtex file for venue " + venue + " and year " + str(year) + " already exists!")
+                    else:
+                        with open(bib_filepath, "w") as file:
+                            file.write(bibtex_string)
 
             except:
                 scraper.log(traceback.format_exc())
@@ -74,6 +53,6 @@ if __name__ == "__main__":
                     if venue not in fails:
                         fails[venue] = []
                     fails[venue].append(year)
-                    dump({"venuetype":config["venuetype"],"venues":fails}, file)
+                    dump({"venuetype":VENUETYPE,"venues":fails}, file)
 
         scraper.log("="*100)

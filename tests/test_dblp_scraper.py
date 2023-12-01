@@ -1,6 +1,5 @@
 from scripts.dblp_scraper import DBLPscraper
 from json import load
-from copy import deepcopy
 import unittest
 
 
@@ -9,7 +8,7 @@ class TestDBLPscraper(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
-        cls.scraper = DBLPscraper(output_directory="output")
+        cls.scraper = DBLPscraper(venuetype="conf", output_directory="tests/output", bibtex_cache_filepath=None)
         cls.scraper.logger = lambda x: x
 
         # Potthast 2021 test resources
@@ -43,11 +42,11 @@ class TestDBLPscraper(unittest.TestCase):
             cls.mocked_ir_anthology_bibtex = "".join(file.readlines())
     
     def test_scrape_venue_with_year(self):
-        entries_sigir_1971 = self.scraper.scrape_venue("conf", "sigir", 1971)
+        entries_sigir_1971 = self.scraper.scrape_venue("sigir", 1971)
         self.assertEqual([entry["info"] for entry in entries_sigir_1971],
                          [entry["info"] for entry in self.sigir_1971_dblp_json])
 
-        entries_sigir_1975 = self.scraper.scrape_venue("conf", "sigir", 1975)
+        entries_sigir_1975 = self.scraper.scrape_venue("sigir", 1975)
         self.assertEqual([entry["info"] for entry in entries_sigir_1975],
                          [])        
 
@@ -78,18 +77,15 @@ class TestDBLPscraper(unittest.TestCase):
     def test_generate_bibtex_string(self):
         
         generated_bibtex_string = self.scraper.generate_bibtex_string(self.sigir_1971_dblp_json,
-                                                                      self.sigir_1971_dblp_bibtex,
-                                                                      "conf")
+                                                                      self.sigir_1971_dblp_bibtex)
         self.assertEqual(generated_bibtex_string, self.sigir_1971_ir_anthology_bibtex)
 
         generated_bibtex_string = self.scraper.generate_bibtex_string(self.PotthastGBBBFKN21_dblp_json,
-                                                                      self.PotthastGBBBFKN21_dblp_bibtex,
-                                                                      "conf")
+                                                                      self.PotthastGBBBFKN21_dblp_bibtex)
         self.assertEqual(generated_bibtex_string, self.PotthastGBBBFKN21_ir_anthology_bibtex)
 
         generated_bibtex_string = self.scraper.generate_bibtex_string(self.mocked_dblp_json,
-                                                                      self.mocked_dblp_bibtex,
-                                                                      "conf")
+                                                                      self.mocked_dblp_bibtex)
         self.assertEqual(generated_bibtex_string, self.mocked_ir_anthology_bibtex)
 
     def test_append_suffixes_to_bibkeys(self):
@@ -142,7 +138,7 @@ class TestDBLPscraper(unittest.TestCase):
                          "DBLP:conf/sigir/PotthastGBBBFKN21")
 
     def test_get_ir_anthology_bibkey_from_entry(self):
-        self.assertEqual(self.scraper._get_ir_anthology_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json[0], "conf"),
+        self.assertEqual(self.scraper._get_ir_anthology_bibkey_from_entry(self.PotthastGBBBFKN21_dblp_json[0]),
                          "conf-sigir-2021-potthast")
 
     def test_convert_name(self):

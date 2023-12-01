@@ -1,3 +1,4 @@
+from csv import writer
 import requests
 import json
 from os.path import exists, sep
@@ -11,7 +12,7 @@ from re import search
 
 class DBLPscraper:
 
-    def __init__(self, output_directory):
+    def __init__(self, venuetype, output_directory, bibtex_cache_filepath):
         self.api_endpoint = "https://dblp.org/search/publ/api"
         self.logger = self.log
         self.bibtex_padding = "\n\n\n"
@@ -20,12 +21,39 @@ class DBLPscraper:
                           str(now.hour) + "_" + str(now.minute) + "_" + (str(now.second).rjust(2,"0")))
         with open("scripts/character_map.json") as file:
             self.character_map = json.load(file)
-        self.output_directory = output_directory
+
+        if venuetype not in ["conf", "journals"]:
+            raise ValueError("Invalid venue type ('conf' or 'journals').")
+        else:
+            self.venuetype = venuetype
+
+        self.output_directory = output_directory + sep + venuetype
         if not exists(self.output_directory):
             makedirs(self.output_directory)
+
+        self.bibtex_cache_filepath = bibtex_cache_filepath if bibtex_cache_filepath else self.output_directory + sep + "dblp_bibtex_cache.txt"
+        self.bibtex_cache = self._load_bibtex_cache(bibtex_cache_filepath)
+
         self.logger_directory = self.output_directory + sep + "_logs" + sep + self.timestamp
         self.logger(str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + " " +
                     str(now.hour) + ":" + str(now.minute) + ":" + (str(now.second).rjust(2,"0")))
+        
+    def _load_bibtex_cache(self, bibtex_cache_filepath):
+        """
+        Load bibtex cache from file.
+        
+        Args:
+            bibtex_cache_filepath: Path to bibtex cache file.
+        Returns:
+            A dictionary of dblp URLs keys and dblp bibtex strings.
+        """
+        bibtex_cache = {}
+        if bibtex_cache_filepath and exists(bibtex_cache_filepath):
+            with open(bibtex_cache_filepath) as file:
+                for line in file:
+                    url, bibtex = json.loads(line)
+                    bibtex_cache[url] = bibtex
+        return bibtex_cache
 
     def log(self, message):
         if not exists(self.logger_directory):
@@ -33,24 +61,22 @@ class DBLPscraper:
         with open(self.logger_directory + sep + "log.txt", "a") as file:
             file.write(message + "\n")
 
-    def scrape_venue(self, venuetype, venue, year):
+    def scrape_venue(self, venue, year):
         """
         Scrape all papers published at a given venue and in a given year from dblp.
 
         Calls to the API require minimum of 3 second courtesy delay to avoid ERROR 429.
         
         Args:
-            venuetype: Type of venue, either 'conf' or 'journals'.
             venue: Name of the venue for which entries shall be scraped.
             year: Year for which entries shall be scraped (optional).
         Returns:
             A list of entries as dictionaries representing publications of venue and year provided.
         """
-        if venuetype not in ["conf", "journals"]:
-            raise ValueError("Invalid venue type ('conf' or 'journals').")
+        
         self.logger("\nScraping venue " + venue + " " + str(year) + ".")
         
-        payload = {"q": ("streamid:" + venuetype + sep + venue + ":" +
+        payload = {"q": ("streamid:" + self.venuetype + sep + venue + ":" +
                          "year" + ":" + str(year)),
                    "format": "json",
                    "h": "1000",
@@ -63,8 +89,12 @@ class DBLPscraper:
             entry_list += self._scrape_venue_batch(payload)
             self.logger(str(len(entry_list)) + " entries scraped from dblp API.")
             payload["f"] = str(int(payload["f"]) + 1000)
+
+        with open(self.logger_directory + sep + "dblp_json_results.csv", "a") as file:
+            csv_writer = writer(file, delimiter=",")
+            csv_writer.writerow([venue, year, len(entry_list)])
             
-        return [entry for entry in entry_list if entry["info"]["key"].startswith(venuetype + sep + venue)]
+        return [entry for entry in entry_list if entry["info"]["key"].startswith(self.venuetype + sep + venue)]
 
     def _scrape_venue_batch(self, payload):
         """
@@ -137,14 +167,17 @@ class DBLPscraper:
         Returns:
             A bibtex string with three linebreaks added as padding to the end.
         """
-        url = entry["info"]["url"] + ".bib"
-        #self.logger("Scraping bibtex of entry " + entry["info"]["title"] + 
-        #            " (" + entry["info"]["url"] + ")...")
-        response = self._get(url)
-        sleep(3)
-        return response.text.strip() + self.bibtex_padding
+        try:
+            return self.bibtex_cache[entry["info"]["url"]].strip() + self.bibtex_padding
+        except KeyError:
+            response = self._get(entry["info"]["url"] + ".bib")
+            bibtex = response.text.strip() + self.bibtex_padding
+            with open(self.bibtex_cache_filepath, "a") as file:
+                file.write(json.dumps([entry["info"]["url"],bibtex]) + "\n")
+            sleep(3)
+            return bibtex
 
-    def generate_bibtex_string(self, entry_list, bibtex_list, venuetype):
+    def generate_bibtex_string(self, entry_list, bibtex_list):
         """
         Generate a string of bibtex entries from a list of entries as provided by the
         dblp API and a list of bibtex string as provided and scraped from the dblp website.
@@ -154,7 +187,6 @@ class DBLPscraper:
         Args:
             entry_list: List of entries-as-dictionaries.
             bibtex_list: List of bibtex string.
-            venuetype: Type of venue, either 'conf' or 'journals'.
         Returns:
             A string of bibtex entries which have been formatted.
         """
@@ -279,7 +311,7 @@ class DBLPscraper:
                                     "  editorid     = " + editorid_string)
 
         # GENERATE IR-ANTHOLOGY BIBKEYS
-        ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry, venuetype) for entry in entry_list])
+        ir_anthology_bibkeys = self._append_suffixes_to_bibkeys([self._get_ir_anthology_bibkey_from_entry(entry) for entry in entry_list])
 
         # REPLACE DBLP BIBKEY WITH IR-ANTHOLOGY BIBKEYS
         for bibtex_lines, dblp_bibkey, ir_anthology_bibkey in zip(bibtex_lines_list, dblp_bibkeys, ir_anthology_bibkeys):
@@ -374,19 +406,18 @@ class DBLPscraper:
         """
         return "DBLP" + ":" + entry["info"]["key"]
     
-    def _get_ir_anthology_bibkey_from_entry(self, entry, venuetype):
+    def _get_ir_anthology_bibkey_from_entry(self, entry):
         """
         Generate IR-Anthology bibkey from entry with the format
         [VENUE]-[YEAR]-[ASCII-LAST-NAME-OF-FIRST-AUTHOR](-[index]
 
         Args:
             entry: Entry-as-dictionary as provided by the dblp API.
-            venuetype: Type of venue, either 'conf' or 'journals'.
         Returns:
             String representation of the IR-Anthology bibkey of this entry.
         """
         last_name_of_first_author = self._get_last_name_of_first_author_from_entry(entry)
-        return "-".join([{"conf":"conf","journals":"jrnl"}[venuetype],
+        return "-".join([{"conf":"conf","journals":"jrnl"}[self.venuetype],
                          entry["info"].get("key").split("/")[1].lower(),
                          entry["info"]["year"]] +
                         ([last_name_of_first_author] if last_name_of_first_author else []))                
