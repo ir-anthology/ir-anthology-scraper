@@ -19,8 +19,7 @@ class DBLPscraper:
         now = datetime.now()
         self.timestamp = (str(now.year) + "_" + str(now.month) + "_" + (str(now.day).rjust(2,"0")) + "_" +
                           str(now.hour) + "_" + str(now.minute) + "_" + (str(now.second).rjust(2,"0")))
-        with open("scripts/character_map.json") as file:
-            self.character_map = json.load(file)
+        self.character_map = {"ä":"ae","ö":"oe","ü":"ue","ß":"ss"}
 
         if venuetype not in ["conf", "journals"]:
             raise ValueError("Invalid venue type ('conf' or 'journals').")
