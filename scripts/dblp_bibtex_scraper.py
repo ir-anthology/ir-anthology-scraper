@@ -1,23 +1,28 @@
-from csv import writer
 import json
 from os.path import exists, sep
 from os import makedirs
 from time import sleep
 from copy import deepcopy
-from datetime import datetime
-from utils.utils import convert_string_to_ascii, get
 from re import search
 
+from utils.utils import convert_string_to_ascii, get
 
-class DBLPscraper:
 
-    def __init__(self, venuetype, output_directory, bibtex_cache_filepath):
-        self.api_endpoint = "https://dblp.org/search/publ/api"
-        self.logger = self.log
+class DBLPBibtexScraper:
+    """
+    Scrape bibtex from dblp.
+
+    Attributes:
+        venuetype: "conf" for conference or "journals" for journals.
+        output_directory: The output directory for the scraping process.
+        dblp_logger: The logger used.
+        bibtex_cache_filepath: The path to the file of previously scraped bibtex.
+        bibtex_cache: The cache of previously scraped bibtex.
+    """
+
+    def __init__(self, venuetype, output_directory, dblp_logger, bibtex_cache_filepath):
+        self.dblp_logger = dblp_logger
         self.bibtex_padding = "\n\n\n"
-        now = datetime.now()
-        self.timestamp = (str(now.year) + "_" + str(now.month) + "_" + (str(now.day).rjust(2,"0")) + "_" +
-                          str(now.hour) + "_" + str(now.minute) + "_" + (str(now.second).rjust(2,"0")))
 
         if venuetype not in ["conf", "journals"]:
             raise ValueError("Invalid venue type ('conf' or 'journals').")
@@ -30,16 +35,6 @@ class DBLPscraper:
 
         self.bibtex_cache_filepath = bibtex_cache_filepath if bibtex_cache_filepath else self.output_directory + sep + "dblp_bibtex_cache.txt"
         self.bibtex_cache = self._load_bibtex_cache(bibtex_cache_filepath)
-
-        self.logger_directory = self.output_directory + sep + "_logs" + sep + self.timestamp
-        self.logger(str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + " " +
-                    str(now.hour) + ":" + str(now.minute) + ":" + (str(now.second).rjust(2,"0")))
-
-    def log(self, message):
-        if not exists(self.logger_directory):
-            makedirs(self.logger_directory)
-        with open(self.logger_directory + sep + "log.txt", "a") as file:
-            file.write(message + "\n")
 
     def _load_bibtex_cache(self, bibtex_cache_filepath):
         """
@@ -58,61 +53,6 @@ class DBLPscraper:
                     bibtex_cache[url] = bibtex
         return bibtex_cache
 
-    def scrape_entries(self, venue, year):
-        """
-        Scrape all papers published at a given venue and in a given year from dblp.
-
-        Calls to the API require minimum of 3 second courtesy delay to avoid ERROR 429.
-        
-        Args:
-            venue: Name of the venue for which entries shall be scraped.
-            year: Year for which entries shall be scraped (optional).
-        Returns:
-            A list of entries as dictionaries representing publications of venue and year provided.
-        """
-        
-        self.logger("\nScraping venue " + venue + " " + str(year) + ".")
-        
-        payload = {"q": ("streamid:" + self.venuetype + sep + venue + ":" +
-                         "year" + ":" + str(year)),
-                   "format": "json",
-                   "h": "1000",
-                   "f": "0"}
-        
-        entry_list = []
-        
-        while len(entry_list) % 1000 == 0 and not (len(entry_list) == 0 and payload["f"] != "0"):
-            sleep(3)
-            entry_list += self._scrape_entry_batch(payload)
-            self.logger(str(len(entry_list)) + " entries scraped from dblp API.")
-            payload["f"] = str(int(payload["f"]) + 1000)
-
-        with open(self.logger_directory + sep + "dblp_json_results.csv", "a") as file:
-            csv_writer = writer(file, delimiter=",")
-            csv_writer.writerow([venue, year, len(entry_list)])
-            
-        return [entry for entry in entry_list if entry["info"]["key"].startswith(self.venuetype + sep + venue)]
-
-    def _scrape_entry_batch(self, payload):
-        """
-        Helper function to scrape specific batch of papers
-        published at a given venue and in a given year.
-        
-        Args:
-            payload: Dictionary of query parameters.
-        Returns:
-            A list of dictionary entries representing
-            publications of venue provided.
-        """
-        
-        response = get(self.logger, self.api_endpoint, payload)
-        try:
-            data = json.loads(response.text)
-        except json.decoder.JSONDecodeError:
-            self.logger(response.text)
-        hits = data["result"]["hits"].get("hit", [])
-        return hits
-
     def scrape_bibtex(self, entry):
         """
         Scrape the bibtex for a given entry from dblp.
@@ -127,7 +67,7 @@ class DBLPscraper:
         try:
             return self.bibtex_cache[entry["info"]["url"]].strip() + self.bibtex_padding
         except KeyError:
-            response = get(self.logger, entry["info"]["url"] + ".bib")
+            response = get(self.dblp_logger, entry["info"]["url"] + ".bib")
             bibtex = response.text.strip() + self.bibtex_padding
             with open(self.bibtex_cache_filepath, "a") as file:
                 file.write(json.dumps([entry["info"]["url"],bibtex]) + "\n")
@@ -162,7 +102,7 @@ class DBLPscraper:
                             editor_map[editor] = {"editorid_string":"{" + self._get_personid_string_from_entry(entry) + "}",
                                                   "persons":entry["info"]["authors"]}
         if editor_map == {}:
-            self.logger("No editors found.")
+            self.dblp_logger.log("No editors found.")
         dblp_bibkeys = []
         
         # ADD DBLPBIBKEY, VENUE AND (WHERE APPLICABLE) AUTHOR, EDITOR, AUTHORID AND EDITORID TO BIBTEX
@@ -205,12 +145,12 @@ class DBLPscraper:
                     editorid = True
                 else:
                     editorid_string = "{ERROR: NO EDITORID}"
-                    self.logger("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                    self.dblp_logger.log("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
             else:
                 editor_string = "{ERROR: NO EDITORS}"
-                self.logger("No editor for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                self.dblp_logger.log("No editor for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
                 editorid_string = "{ERROR: NO EDITORID}"
-                self.logger("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                self.dblp_logger.log("No editorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
 
             # SET AUTHOR AND AUTHOR ID STRING
             if author:
@@ -225,12 +165,12 @@ class DBLPscraper:
                             authorid = True
                         else:
                             authorid_string = "{ERROR: NO EDITORID}"
-                            self.logger("No authorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                            self.dblp_logger.log("No authorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
                     else:
                         author_string = "{ERROR: NO EDITORS}"
-                        self.logger("No author for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                        self.dblp_logger.log("No author for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
                         authorid_string = "{ERROR: NO EDITORID}"
-                        self.logger("No authorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
+                        self.dblp_logger.log("No authorid for entry " + venue_string + " " + entry["info"]["year"] + " " + entry["info"]["url"] + ".html?view=bibtex")
 
             # HANDLE PERSON DATA IN JSON
             if editorship:
@@ -240,15 +180,15 @@ class DBLPscraper:
                     if editor and editor_string in editor_map:
                         entry["info"]["authors"] = editor_map[editor_string]["persons"]
                     else:
-                        self.logger("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " +
-                                    entry["info"]["url"] + ".html?view=bibtex. Trying to obtain persons from bibtex instead.")
+                        self.dblp_logger.log("No persons for entry " + venue_string + " " + entry["info"]["year"] + " " +
+                                        entry["info"]["url"] + ".html?view=bibtex. Trying to obtain persons from bibtex instead.")
                         if editor:
                             entry["info"]["authors"] = {"author":[{"@pid":"PERSONIDERROR",
                                                                     "text":author_text.strip()}
                                                                     for author_text in editor_string[1:-1].split(" and ")]}
                         else:
-                            self.logger("Unable to get persons from bibtex for entry " + venue_string + " " + entry["info"]["year"] + " " +
-                                        entry["info"]["url"] + ".html?view=bibtex")
+                            self.dblp_logger.log("Unable to get persons from bibtex for entry " + venue_string + " " + entry["info"]["year"] + " " +
+                                            entry["info"]["url"] + ".html?view=bibtex")
                             entry["info"]["authors"] = {"author":[{"@pid":"PERSONIDERROR",
                                                                    "text":"PERSONTEXTERROR"}]} 
 
