@@ -2,7 +2,7 @@ from datetime import datetime
 from os import makedirs
 from os.path import exists, sep
 
-class DBLPLogger:
+class Logger:
 
     def __init__(self, output_directory):
         now = datetime.now()

@@ -1,19 +1,17 @@
-from scripts.dblp_bibtex_scraper import DBLPBibtexScraper
 from json import load
 import unittest
 
-from scripts.dblp_logger import DBLPLogger
+from scripts.scraper import Scraper
 
 
-class TestDBLPscraper(unittest.TestCase):
+class TestBibtexScraper(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
-        logger = DBLPLogger("")
-        logger.log = lambda x: x
-        cls.dblp_bibtex_scraper = DBLPBibtexScraper(venuetype="conf", output_directory="tests/output", 
-                                                    bibtex_cache_filepath=None, dblp_logger=logger)
+        cls.dblp_bibtex_scraper = Scraper(venuetype="conf",
+                                          output_directory="tests/output",
+                                          bibtex_cache_filepath=None)
 
         # Potthast 2021 test resources
         with open("tests/resources/PotthastGBBBFKN21_dblp.json") as file:
@@ -44,10 +42,6 @@ class TestDBLPscraper(unittest.TestCase):
             cls.mocked_dblp_bibtex = "".join(file.readlines()).split("\n\n\n\n")
         with open("tests/resources/mocked_ir_anthology.bib") as file:
             cls.mocked_ir_anthology_bibtex = "".join(file.readlines())
-
-    def test_scrape_bibtex(self):     
-        bibtex_string_scraped = self.dblp_bibtex_scraper.scrape_bibtex(self.PotthastGBBBFKN21_dblp_json[0])
-        self.assertEqual(bibtex_string_scraped.strip(), self.PotthastGBBBFKN21_dblp_bibtex[0].strip())
 
     def test_generate_bibtex_string(self):
         

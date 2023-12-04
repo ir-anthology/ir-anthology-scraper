@@ -1,79 +1,64 @@
-import json
+from copy import deepcopy
+from csv import writer
+from json import dump
+from re import search
 from os.path import exists, sep
 from os import makedirs
-from time import sleep
-from copy import deepcopy
-from re import search
+import traceback
 
-from utils.utils import convert_string_to_ascii, get
+from tqdm import tqdm
+from scripts.dblp.bibtex_scraper import BibtexScraper
+from scripts.dblp.entry_scraper import EntryScraper
+from scripts.logger import Logger
 
+from utils.utils import convert_string_to_ascii
 
-class DBLPBibtexScraper:
-    """
-    Scrape bibtex from dblp.
+class Scraper:
 
-    Attributes:
-        venuetype: "conf" for conference or "journals" for journals.
-        output_directory: The output directory for the scraping process.
-        dblp_logger: The logger used.
-        bibtex_cache_filepath: The path to the file of previously scraped bibtex.
-        bibtex_cache: The cache of previously scraped bibtex.
-    """
-
-    def __init__(self, venuetype, output_directory, dblp_logger, bibtex_cache_filepath):
-        self.dblp_logger = dblp_logger
+    def __init__(self, venuetype, output_directory, bibtex_cache_filepath):
         self.bibtex_padding = "\n\n\n"
-
         if venuetype not in ["conf", "journals"]:
             raise ValueError("Invalid venue type ('conf' or 'journals').")
         else:
             self.venuetype = venuetype
-
         self.output_directory = output_directory + sep + venuetype
+        self.logger = Logger(self.output_directory)
         if not exists(self.output_directory):
             makedirs(self.output_directory)
+        self.dblp_entry_scraper = EntryScraper(venuetype, self.logger)
+        self.dblp_bibtex_scraper = BibtexScraper(venuetype, self.logger, self.output_directory, bibtex_cache_filepath, self.bibtex_padding)
 
-        self.bibtex_cache_filepath = bibtex_cache_filepath if bibtex_cache_filepath else self.output_directory + sep + "dblp_bibtex_cache.txt"
-        self.bibtex_cache = self._load_bibtex_cache(bibtex_cache_filepath)
-
-    def _load_bibtex_cache(self, bibtex_cache_filepath):
+    def scrape_entries_and_bibtex(self, venue, year):
         """
-        Load bibtex cache from file.
-        
-        Args:
-            bibtex_cache_filepath: Path to bibtex cache file.
-        Returns:
-            A dictionary of dblp URLs keys and dblp bibtex strings.
-        """
-        bibtex_cache = {}
-        if bibtex_cache_filepath and exists(bibtex_cache_filepath):
-            with open(bibtex_cache_filepath) as file:
-                for line in file:
-                    url, bibtex = json.loads(line)
-                    bibtex_cache[url] = bibtex
-        return bibtex_cache
-
-    def scrape_bibtex(self, entry):
-        """
-        Scrape the bibtex for a given entry from dblp.
-
-        Calls to the API require minimum of 3 second courtesy delay to avoid ERROR 429.
+        Scrape entries and bibtex for venue and year from dblp.
 
         Args:
-            entry: An entry-as-dictionary as provided by the dblp API.
+            venue: The name of the venue, e.g. 'sigir'.
+            year: The year of the conference or journal, e.g. 1971.
         Returns:
-            A bibtex string with three linebreaks added as padding to the end.
+            A touple of entry and bibtex lists.        
         """
+        print("Scraping bibtex entries of " + venue + " " + str(year) + "...")
+        fails = {}
         try:
-            return self.bibtex_cache[entry["info"]["url"]].strip() + self.bibtex_padding
-        except KeyError:
-            response = get(self.dblp_logger, entry["info"]["url"] + ".bib")
-            bibtex = response.text.strip() + self.bibtex_padding
-            with open(self.bibtex_cache_filepath, "a") as file:
-                file.write(json.dumps([entry["info"]["url"],bibtex]) + "\n")
-            sleep(3)
-            return bibtex
-
+            entry_list = self.dblp_entry_scraper.scrape_entries(venue, year)
+            with open(self.logger.logger_directory + sep + "dblp_json_results.csv", "a") as file:
+                csv_writer = writer(file, delimiter=",")
+                csv_writer.writerow([venue, year, len(entry_list)])
+            if entry_list != []:
+                bibtex_list = [self.dblp_bibtex_scraper.scrape_bibtex(entry) for entry in tqdm(entry_list, total=len(entry_list))]
+                return entry_list, bibtex_list
+            else:
+                return [], []
+        except:
+            self.logger.log(traceback.format_exc())
+            with open(self.logger.logger_directory + sep + "failed.json", "w") as file:
+                if venue not in fails:
+                    fails[venue] = []
+                fails[venue].append(year)
+                dump({"venuetype":self.venuetype,"venues":fails}, file)
+                return [], []
+        
     def generate_bibtex_string(self, entry_list, bibtex_list):
         """
         Generate a string of bibtex entries from a list of entries as provided by the
@@ -340,4 +325,3 @@ class DBLPBibtexScraper:
                             .strip()
                             .split(" ")[-1]
                             .lower())
-

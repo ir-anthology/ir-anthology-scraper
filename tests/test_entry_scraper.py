@@ -1,18 +1,18 @@
 from json import load
 import unittest
 
-from scripts.dblp_entry_scraper import DBLPEntryScraper
-from scripts.dblp_logger import DBLPLogger
+from scripts.dblp.entry_scraper import EntryScraper
+from scripts.logger import Logger
 
 
-class TestDBLPscraper(unittest.TestCase):
+class TestEntryScraper(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         cls.maxDiff = None
-        logger = DBLPLogger("")
+        logger = Logger("")
         logger.log = lambda x: x
-        cls.dblp_entry_scraper = DBLPEntryScraper(venuetype="conf", output_directory="tests/output", dblp_logger=logger)
+        cls.dblp_entry_scraper = EntryScraper(venuetype="conf", logger=logger)
 
         # SIGIR 1971 test resources
         with open("tests/resources/sigir_1971_dblp.json") as file:
