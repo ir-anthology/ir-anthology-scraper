@@ -42,11 +42,11 @@ class TestDBLPscraper(unittest.TestCase):
             cls.mocked_ir_anthology_bibtex = "".join(file.readlines())
     
     def test_scrape_venue_with_year(self):
-        entries_sigir_1971 = self.scraper.scrape_venue("sigir", 1971)
+        entries_sigir_1971 = self.scraper.scrape_entries("sigir", 1971)
         self.assertEqual([entry["info"] for entry in entries_sigir_1971],
                          [entry["info"] for entry in self.sigir_1971_dblp_json])
 
-        entries_sigir_1975 = self.scraper.scrape_venue("sigir", 1975)
+        entries_sigir_1975 = self.scraper.scrape_entries("sigir", 1975)
         self.assertEqual([entry["info"] for entry in entries_sigir_1975],
                          [])        
 
@@ -57,7 +57,7 @@ class TestDBLPscraper(unittest.TestCase):
                    "format": "json",
                    "h": "5",
                    "f": "3"}
-        entry_batch = self.scraper._scrape_venue_batch(payload)
+        entry_batch = self.scraper._scrape_entry_batch(payload)
         self.assertEqual([entry["info"] for entry in entry_batch],
                          [entry["info"] for entry in self.sigir_1971_dblp_json[3:8]])
 

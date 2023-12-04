@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
             try:
                 print("Scraping bibtex entries of " + venue + " " + str(year) + "...")
-                entry_list = scraper.scrape_venue(venue, year)
+                entry_list = scraper.scrape_entries(venue, year)
 
                 if entry_list != []:
                     bibtex_list = [scraper.scrape_bibtex(entry) for entry in tqdm(entry_list, total=len(entry_list))]

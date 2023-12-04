@@ -1,12 +1,11 @@
 from csv import writer
-import requests
 import json
 from os.path import exists, sep
 from os import makedirs
 from time import sleep
 from copy import deepcopy
 from datetime import datetime
-from utils.utils import normalize_to_ascii
+from utils.utils import convert_string_to_ascii, get
 from re import search
 
 
@@ -19,7 +18,6 @@ class DBLPscraper:
         now = datetime.now()
         self.timestamp = (str(now.year) + "_" + str(now.month) + "_" + (str(now.day).rjust(2,"0")) + "_" +
                           str(now.hour) + "_" + str(now.minute) + "_" + (str(now.second).rjust(2,"0")))
-        self.character_map = {"ä":"ae","ö":"oe","ü":"ue","ß":"ss"}
 
         if venuetype not in ["conf", "journals"]:
             raise ValueError("Invalid venue type ('conf' or 'journals').")
@@ -36,7 +34,13 @@ class DBLPscraper:
         self.logger_directory = self.output_directory + sep + "_logs" + sep + self.timestamp
         self.logger(str(now.year) + "-" + str(now.month) + "-" + (str(now.day).rjust(2,"0")) + " " +
                     str(now.hour) + ":" + str(now.minute) + ":" + (str(now.second).rjust(2,"0")))
-        
+
+    def log(self, message):
+        if not exists(self.logger_directory):
+            makedirs(self.logger_directory)
+        with open(self.logger_directory + sep + "log.txt", "a") as file:
+            file.write(message + "\n")
+
     def _load_bibtex_cache(self, bibtex_cache_filepath):
         """
         Load bibtex cache from file.
@@ -54,13 +58,7 @@ class DBLPscraper:
                     bibtex_cache[url] = bibtex
         return bibtex_cache
 
-    def log(self, message):
-        if not exists(self.logger_directory):
-            makedirs(self.logger_directory)
-        with open(self.logger_directory + sep + "log.txt", "a") as file:
-            file.write(message + "\n")
-
-    def scrape_venue(self, venue, year):
+    def scrape_entries(self, venue, year):
         """
         Scrape all papers published at a given venue and in a given year from dblp.
 
@@ -85,7 +83,7 @@ class DBLPscraper:
         
         while len(entry_list) % 1000 == 0 and not (len(entry_list) == 0 and payload["f"] != "0"):
             sleep(3)
-            entry_list += self._scrape_venue_batch(payload)
+            entry_list += self._scrape_entry_batch(payload)
             self.logger(str(len(entry_list)) + " entries scraped from dblp API.")
             payload["f"] = str(int(payload["f"]) + 1000)
 
@@ -95,7 +93,7 @@ class DBLPscraper:
             
         return [entry for entry in entry_list if entry["info"]["key"].startswith(self.venuetype + sep + venue)]
 
-    def _scrape_venue_batch(self, payload):
+    def _scrape_entry_batch(self, payload):
         """
         Helper function to scrape specific batch of papers
         published at a given venue and in a given year.
@@ -107,53 +105,13 @@ class DBLPscraper:
             publications of venue provided.
         """
         
-        response = self._get(self.api_endpoint, payload)
+        response = get(self.logger, self.api_endpoint, payload)
         try:
             data = json.loads(response.text)
         except json.decoder.JSONDecodeError:
             self.logger(response.text)
         hits = data["result"]["hits"].get("hit", [])
         return hits
-
-    def _get(self, url, parameters = {}):
-        """
-        Wrapper function for GET request. If the server responds with Error 429,
-        the request is repeated after a delay starting at 10 seconds and incrementing
-        by 10 seconds until the delay is greater than 60 seconds, at which point this
-        function throws a TimeoutError.
-
-        Args:
-            url: The API endpoint of dblp.
-            parameters: Dictionary of query parameters (optional).
-        Returns:
-            The API response of dblp to the request.
-        Throws:
-            TimeoutError if server responds with Error 429 and delay has increased to 60 seconds.
-        """
-        response = requests.get(url, parameters)
-        delay = 10
-        while response.status_code == 429:
-            if delay > 60:
-                raise TimeoutError("Scrape aborted due to repeated status code 429.")
-            else:
-                self.logger("Server responded with 429 (Too Many Requests); waiting " + 
-                            str(delay) + " seconds...")
-                sleep(delay)
-            response = requests.get(url, params = parameters)
-            delay += 10
-        return response
-
-    def stats(self, entry_list):
-        """
-        Provide entry count by year.
-
-        Args:
-            entry_list: A list of entries-as-dictionaries to analyse.
-        Returns:
-            A dictionary of year-count key-value pairs.
-        """
-        return {year:[entry['info']['year'] for entry in entry_list].count(year)
-                for year in sorted(set([e['info']['year'] for e in entry_list]))}
 
     def scrape_bibtex(self, entry):
         """
@@ -169,7 +127,7 @@ class DBLPscraper:
         try:
             return self.bibtex_cache[entry["info"]["url"]].strip() + self.bibtex_padding
         except KeyError:
-            response = self._get(entry["info"]["url"] + ".bib")
+            response = get(self.logger, entry["info"]["url"] + ".bib")
             bibtex = response.text.strip() + self.bibtex_padding
             with open(self.bibtex_cache_filepath, "a") as file:
                 file.write(json.dumps([entry["info"]["url"],bibtex]) + "\n")
@@ -438,19 +396,8 @@ class DBLPscraper:
             first_author = authors["text"]
         if type(authors) is str:
             first_author = authors
-        return self._convert_name("".join([c for c in first_author if (c.isalpha() or c == " ")])
-                                  .strip()
-                                  .split(" ")[-1]
-                                  .lower())
-
-    def _convert_name(self, string):
-        """
-        Format string to ASCII.
-
-        Args:
-            entry: A string.
-        Returns:
-            ASCII-formatted version of the input string.
-        """
-        return "".join([self.character_map.get(character, normalize_to_ascii(character)) for character in string])
+        return convert_string_to_ascii("".join([c for c in first_author if (c.isalpha() or c == " ")])
+                            .strip()
+                            .split(" ")[-1]
+                            .lower())
 
