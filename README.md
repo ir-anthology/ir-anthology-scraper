@@ -1,6 +1,6 @@
 # IR-Anthology Scraper
 
-This repository provides code to scrape dblp and download bibtex files for given venues and year.
+This repository provides code to scrape dblp and download bibtex files for given venues and years.
 
 The scraper requires a config file of the below format:
 
@@ -12,7 +12,7 @@ The scraper will save the bibtex files to the output directory following the bel
 
 output/[venuetype]/[venue]/[year]/venuetype-venue-year.bib
 
-Running the scraper with a config file {"venuetype":"conf","venues":{"sigir":[1971]}} will provide the following output:
+Running the scraper with a config file {"venuetype":"conf","venues":{"sigir":[1971]}} will generate the following output:
 
 └── conf<br>
               ├── dblp_bibtex_cache.txt<br>
@@ -31,13 +31,7 @@ dblp_bibtex_cache.txt is a JSON lines document containing all bibtex strings suc
 
 Each line is a list of two elements, the first one being a URL to the entry on dblp, the second being the bibtex string.
 
-_logs contains a copy of the config.json with which the process was run.
-
-dblp_json_results.csv details an overview of the number of JSON entries scraped from the dblp API, e.g.
-
-`sigir,1971,21`
-
-log.txt is simple log of the scraping process, including any exceptions raised.
+_logs contains a copy of the config.json with which the process was run, a simple log (log.txt) of the scraping process including any exceptions raised, and an overview of the number of JSON entries scraped from the dblp API (dblp_json_results.csv, e.g. `sigir,1971,21`).
 
 ### main.py
 
