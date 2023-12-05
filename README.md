@@ -26,7 +26,7 @@ Running the scraper with the above config file will generate the following outpu
               │                    └──  conf-sigir-1971.bib<br>
               └── www<br>
                        ├── 2021<br>
-                       │                      └── conf-www-2021.bib<br>
+                         │                    └── conf-www-2021.bib<br>
                        └── 2023<br>
                                               └── conf-www-2023.bib<br>
 
