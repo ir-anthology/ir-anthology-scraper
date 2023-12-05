@@ -12,7 +12,7 @@ The scraper will save the bibtex files to the output directory following the bel
 
 output/[venuetype]/[venue]/[year]/venuetype-venue-year.bib
 
-Running the scraper with a config file {"venuetype":"conf","venues":{"sigir":[1971]}} will generate the following output:
+Running the scraper with the above config file will generate the following output:
 
 └── conf<br>
               ├── dblp_bibtex_cache.txt<br>
@@ -22,8 +22,13 @@ Running the scraper with a config file {"venuetype":"conf","venues":{"sigir":[19
               │                    ├── dblp_json_results.csv<br>
               │                    └── log.txt<br>
               └── sigir<br>
-                       └── 1971<br>
-                                              └── conf-sigir-1971.bib<br>
+              │        └── 1971<br>
+              │                               └── conf-sigir-1971.bib<br>
+              └── www<br>
+                       └── 2021<br>
+                                              └── conf-www-2021.bib<br>
+                       └── 2023<br>
+                                              └── conf-www-2023.bib<br>
 
 dblp_bibtex_cache.txt is a JSON lines document containing all bibtex strings successfully scraped from dblp, e.g.
 
