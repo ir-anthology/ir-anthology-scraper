@@ -28,7 +28,7 @@ Running the scraper with the above config file will generate the following outpu
                        ├── 2021<br>
                        │        └── conf-www-2021.bib<br>
                        └── 2023<br>
-                                    └── conf-www-2023.bib<br>
+                                  └── conf-www-2023.bib<br>
 
 dblp_bibtex_cache.txt is a JSON lines document containing all bibtex strings successfully scraped from dblp, e.g.
 
