@@ -11,35 +11,45 @@ class BibtexScraper:
 
     Attributes:
         venuetype: "conf" for conference or "journals" for journals.
-        output_directory: The output directory for the scraping process.
         logger: The logger used.
+        output_directory: The output directory for the purpose of storing bibtex cache.
         bibtex_cache_filepath: The path to the file of previously scraped bibtex.
         bibtex_cache: The cache of previously scraped bibtex.
+        bibtex_padding: Padding between bibtex entries; usually '\n\n\n'.
     """
 
     def __init__(self, venuetype, logger, output_directory, bibtex_cache_filepath, bibtex_padding):
-        self.logger = logger
-        self.bibtex_padding = bibtex_padding
         self.venuetype = venuetype
-        self.bibtex_cache_filepath = bibtex_cache_filepath if bibtex_cache_filepath else output_directory + sep + "dblp_bibtex_cache.txt"
-        self.bibtex_cache = self._load_bibtex_cache(self.bibtex_cache_filepath)
+        self.logger = logger
+        self.output_directory = output_directory 
+        self.bibtex_cache_filepath = bibtex_cache_filepath
+        self.bibtex_cache = {}
+        self._load_bibtex_cache()
+        self.bibtex_padding = bibtex_padding
 
-    def _load_bibtex_cache(self, bibtex_cache_filepath):
+    def _load_bibtex_cache(self):
         """
         Load bibtex cache from file.
-        
-        Args:
-            bibtex_cache_filepath: Path to bibtex cache file.
-        Returns:
-            A dictionary of dblp URLs keys and dblp bibtex strings.
         """
-        bibtex_cache = {}
-        if bibtex_cache_filepath and exists(bibtex_cache_filepath):
-            with open(bibtex_cache_filepath) as file:
+        if self.bibtex_cache_filepath and exists(self.bibtex_cache_filepath):
+            with open(self.bibtex_cache_filepath) as file:
                 for line in file:
                     url, bibtex = json.loads(line)
-                    bibtex_cache[url] = bibtex
-        return bibtex_cache
+                    self.bibtex_cache[url] = bibtex
+        else:
+            
+            self.bibtex_cache_filepath = self.output_directory + sep + "dblp_bibtex_cache.txt"
+            if exists(self.bibtex_cache_filepath):
+                check = input("Bibtex cache file found (" + self.bibtex_cache_filepath + "). Load? [y/n] ")
+                if check == "y":
+                    self._load_bibtex_cache()
+                else:
+                    check == input("Bibtex will be appended to existing cache file. Are you sure? [y/n] ")
+                    if check == "y":
+                        print("Bibtex will be appended to cache - manually check for duplicate!")
+                    else:
+                        print("Loading existing bibtex cache file.")
+                        self._load_bibtex_cache()
 
     def scrape_bibtex(self, entry):
         """

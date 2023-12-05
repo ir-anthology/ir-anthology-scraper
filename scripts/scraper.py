@@ -14,9 +14,21 @@ from scripts.logger import Logger
 from utils.utils import convert_string_to_ascii
 
 class Scraper:
+    """
+    Scraper to wrap the dblp entry and bibtex scraper and generate bibtex strings from
+    entries and their respective bibtex strings.
+
+    Attributes:
+        venuetype: "conf" for conference or "journals" for journals.
+        output_directory: The root directory for the output, automatically set
+                          to the output_directory/venuetype as provided.
+        logger: The logger used.
+        bibtex_padding: Padding between bibtex entries; set to '\n\n\n'.
+        dblp_entry_scraper: The scraper to scrape dblp entries.
+        dblp_bibtex_scraper: The scraper to scrape dblp bibtex.
+    """
 
     def __init__(self, venuetype, output_directory, bibtex_cache_filepath):
-        self.bibtex_padding = "\n\n\n"
         if venuetype not in ["conf", "journals"]:
             raise ValueError("Invalid venue type ('conf' or 'journals').")
         else:
@@ -25,6 +37,7 @@ class Scraper:
         self.logger = Logger(self.output_directory)
         if not exists(self.output_directory):
             makedirs(self.output_directory)
+        self.bibtex_padding = "\n\n\n"
         self.dblp_entry_scraper = EntryScraper(venuetype, self.logger)
         self.dblp_bibtex_scraper = BibtexScraper(venuetype, self.logger, self.output_directory, bibtex_cache_filepath, self.bibtex_padding)
 

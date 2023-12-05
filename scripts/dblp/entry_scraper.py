@@ -11,15 +11,14 @@ class EntryScraper:
 
     Attributes:
         venuetype: "conf" for conference or "journals" for journals.
-        output_directory: The output directory for the scraping process.
         logger: The logger used.
         api_endpoint: The dblp API endpoint URL.
     """
 
     def __init__(self, venuetype, logger):
+        self.venuetype = venuetype  
         self.logger = logger
         self.api_endpoint = "https://dblp.org/search/publ/api"
-        self.venuetype = venuetype    
 
     def scrape_entries(self, venue, year):
         """
